@@ -1,10 +1,16 @@
 {
-  "name": "claimtrack",
+  "name": "claimtrack-server",
   "version": "1.0.0",
-  "description": "ระบบติดตามยืนยันเคสเคลม — Node.js + SQLite (Cloud ready)",
+  "description": "ระบบติดตามยืนยันเคสเคลม — Node.js + SQLite (local) / PostgreSQL (cloud)",
+  "main": "server.js",
   "scripts": {
-    "start": "node server/server.js",
-    "postinstall": "cd server && npm install"
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pg": "^8.11.3"
   },
   "engines": {
     "node": ">=18.0.0"
