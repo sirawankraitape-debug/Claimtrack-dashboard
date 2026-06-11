@@ -184,8 +184,8 @@ const importCases = async (rows) => {
 
   const doImport = db.transaction((list) => {
     for (const r of list) {
-      const status    = EXCEL_STATUS_MAP[r.excelStatus] || null;
       const confirmed = r.confirmedText === 'ยืนยันรับ' ? 1 : 0;
+      const status    = confirmed ? (EXCEL_STATUS_MAP[r.excelStatus] || null) : null;
       const owner     = (r.owner   && r.owner   !== '—') ? r.owner   : '—';
       const ownerCC   = (r.ownerCC && r.ownerCC !== '—') ? r.ownerCC : '—';
       const claimAmt  = (r.claimAmount != null && !isNaN(r.claimAmount) && r.claimAmount > 0)
@@ -212,6 +212,8 @@ const importCases = async (rows) => {
   });
 
   doImport(rows);
+  // ล้าง status เคสที่ยังไม่ยืนยัน — ไม่ควรมีสถานะ
+  db.prepare('UPDATE cases SET bill_status = NULL WHERE confirmed = 0').run();
   return { added, skipped };
 };
 

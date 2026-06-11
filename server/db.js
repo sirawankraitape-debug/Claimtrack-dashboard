@@ -151,8 +151,8 @@ const importCases = async (rows) => {
   try {
     await client.query('BEGIN');
     for (const r of rows) {
-      const status    = EXCEL_STATUS_MAP[r.excelStatus] || null;
       const confirmed = r.confirmedText === 'ยืนยันรับ';
+      const status    = confirmed ? (EXCEL_STATUS_MAP[r.excelStatus] || null) : null;
       const owner     = (r.owner   && r.owner   !== '—') ? r.owner   : '—';
       const ownerCC   = (r.ownerCC && r.ownerCC !== '—') ? r.ownerCC : '—';
       const faultDC   = r.faultDC || '';
@@ -192,6 +192,8 @@ const importCases = async (rows) => {
         added++;
       } else skipped++;
     }
+    // ล้าง status เคสที่ยังไม่ยืนยัน — ไม่ควรมีสถานะ
+    await client.query('UPDATE cases SET bill_status = NULL WHERE confirmed = false');
     await client.query('COMMIT');
   } catch (e) {
     await client.query('ROLLBACK');

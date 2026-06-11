@@ -2468,8 +2468,8 @@ function App() {
       const importedNos = new Set();
       const fresh = [];
       parsedRows.forEach((r) => {
-        const excelStatus = window.EXCEL_STATUS_MAP[r.excelStatus] || 'received';
         const isConfirmed = r.confirmedText === 'ยืนยันรับ';
+        const excelStatus = isConfirmed ? (window.EXCEL_STATUS_MAP[r.excelStatus] || null) : null;
         const newCase = window.makeCase(r, {
           status:    excelStatus,
           confirmed: isConfirmed,
