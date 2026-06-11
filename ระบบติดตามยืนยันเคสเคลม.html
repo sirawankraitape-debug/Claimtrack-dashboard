@@ -3144,6 +3144,7 @@ function CCPersonCards({ ccCases, onOpenCase }) {
   const dc = (d) => d > 7 ? '#F87171' : d > 3 ? '#FBBF24' : '#34D399';
 
   const confirmedCases = ccCases.filter(c => c.confirmed);
+  const unconfirmedGrp = ccCases.filter(c => !c.confirmed);
 
   const detailCards = CC_DETAIL.map(key => {
     const s = window.STATUS_MAP[key]; if (!s) return null;
@@ -3162,12 +3163,13 @@ function CCPersonCards({ ccCases, onOpenCase }) {
     return { key, s, grp };
   }).filter(Boolean);
 
-  if (!detailCards.length && !countCards.length) return (
+  if (!detailCards.length && !countCards.length && !unconfirmedGrp.length) return (
     <div style={{ fontSize:12.5, color:'var(--text-muted)', padding:'8px 0' }}>ไม่มีเคสค้างดำเนินการ</div>
   );
 
   const expandedCases = (() => {
     if (!expandKey) return null;
+    if (expandKey === '__unconfirmed__') return [...unconfirmedGrp].sort((a,b) => (calcDaysInStatus(b).daysInStatus||0) - (calcDaysInStatus(a).daysInStatus||0));
     const card = [...detailCards, ...countCards].find(c => c.key === expandKey);
     const grp = card ? card.grp : null;
     if (!grp || !grp.length) return null;
@@ -3261,6 +3263,32 @@ function CCPersonCards({ ccCases, onOpenCase }) {
             </div>
           );
         })}
+        {unconfirmedGrp.length > 0 && (
+          <div onClick={() => toggle('__unconfirmed__')} style={{
+            cursor:'pointer', transition:'all .15s', userSelect:'none',
+            background: expandKey==='__unconfirmed__' ? hexA('#F59E0B',.1) : 'var(--surface-2)',
+            borderTop:`1px solid ${expandKey==='__unconfirmed__' ? hexA('#F59E0B',.45) : 'var(--border)'}`,
+            borderRight:`1px solid ${expandKey==='__unconfirmed__' ? hexA('#F59E0B',.45) : 'var(--border)'}`,
+            borderBottom:`1px solid ${expandKey==='__unconfirmed__' ? hexA('#F59E0B',.45) : 'var(--border)'}`,
+            borderLeft:'4px solid #F59E0B', borderRadius:'var(--radius-card)', padding:'14px 16px',
+            display:'flex', alignItems:'center', gap:12,
+          }}>
+            <div style={{ flex:1 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:5 }}>
+                <span style={{ width:9, height:9, borderRadius:3, background:'#F59E0B' }}></span>
+                <span style={{ fontSize:12.5, fontWeight:700, color:'var(--text)' }}>รอยืนยันรับเคส</span>
+              </div>
+              <div style={{ fontSize:11, color:'var(--text-muted)' }}>คลิกเพื่อดูรายเคส</div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ textAlign:'right' }}>
+                <div style={{ fontSize:32, fontWeight:800, color:'#F59E0B', fontFeatureSettings:'"tnum"', lineHeight:1 }}>{unconfirmedGrp.length}</div>
+                <div style={{ fontSize:11.5, color:'var(--text-muted)', marginTop:2 }}>เคส</div>
+              </div>
+              <ChevIcon active={expandKey==='__unconfirmed__'} color="#F59E0B" />
+            </div>
+          </div>
+        )}
       </div>
 
       {expandKey && expandedCases && (
@@ -3268,7 +3296,7 @@ function CCPersonCards({ ccCases, onOpenCase }) {
           <div style={{ padding:'10px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:8, background:'var(--surface-2)', flexWrap:'wrap' }}>
             <Icon name="list" size={14} style={{ color:'var(--text-muted)', flexShrink:0 }} />
             <span style={{ fontSize:12.5, fontWeight:600, color:'var(--text-2)' }}>
-              {(window.STATUS_MAP[expandKey]||{}).label || expandKey}
+              {expandKey === '__unconfirmed__' ? 'รอยืนยันรับเคส' : ((window.STATUS_MAP[expandKey]||{}).label || expandKey)}
             </span>
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>· {expandedCases.length} เคส · เรียงจากค้างนานสุด</span>
             <button onClick={e => { e.stopPropagation(); setExpandKey(null); }} style={{ marginLeft:'auto', background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 4px' }}>✕</button>
@@ -3475,7 +3503,7 @@ function CCDashboard({ cases, onOpenCase, onSetStatus, onConfirm }) {
           {displayList.map(name => {
             const ccCases = filteredCases
               .filter(c => name === '—' ? (!c.ownerCC || c.ownerCC === '—') : c.ownerCC === name)
-              .filter(c => CC_SHOWN_KEYS.has(c.billStatus));
+              .filter(c => CC_SHOWN_KEYS.has(c.billStatus) || !c.confirmed);
             if (!ccCases.length) return null;
             const totalAmt = ccCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0);
             return (
