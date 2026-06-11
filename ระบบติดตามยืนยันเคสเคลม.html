@@ -1203,13 +1203,14 @@ window.Dashboard = Dashboard;
 <!-- cases.jsx                                                               -->
 <!-- ===================================================================== -->
 <script type="text/babel">
-const { useState: useStateC, useMemo: useMemoC } = React;
+const { useState: useStateC, useMemo: useMemoC, useEffect: useEffectC } = React;
 const dl = window.dispLabel;
 
 const { normalizeDamage, DAMAGE_GROUP_ORDER } = window;
 
-function CasesView({ cases, view, setView, onOpenCase, onConfirm, onSetStatus, onAddStatus, onUpload, onExport, initialFilter }) {
-  const [q, setQ] = useStateC('');
+function CasesView({ cases, view, setView, onOpenCase, onConfirm, onSetStatus, onAddStatus, onUpload, onExport, initialFilter, initialQ }) {
+  const [q, setQ] = useStateC(initialQ || '');
+  useEffectC(() => { setQ(initialQ || ''); }, [initialQ]);
   const [statusFilter, setStatusFilter] = useStateC(initialFilter && window.STATUS_MAP[initialFilter] ? initialFilter : 'all');
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useStateC(initialFilter === 'unconfirmed');
   const [scFilter, setScFilter]       = useStateC('all');
@@ -2215,6 +2216,7 @@ function App() {
   const [navOpen, setNavOpen] = useStateA(false);
   const [topbarDateFrom, setTopbarDateFrom] = useStateA('');
   const [topbarDateTo,   setTopbarDateTo]   = useStateA('');
+  const [topbarSearch,   setTopbarSearch]   = useStateA('');
 
   // แปลง DD/MM/YYYY (พ.ศ.) → Date
   // รองรับทุก format: DD/MM/YYYY, D/M/YYYY, MM/DD/YYYY, M/D/YY, YYYY-MM-DD, พ.ศ./ค.ศ.
@@ -2595,7 +2597,7 @@ function App() {
           <button className="hamburger" onClick={() => setNavOpen(true)}><Icon name="menu" size={22} /></button>
           <div className="topbar-search">
             <Icon name="search" size={17} style={{ color: 'var(--text-muted)' }} />
-            <input placeholder="ค้นหาเคส, เลขบิล, บริษัท..." onFocus={() => gotoCases()} />
+            <input placeholder="ค้นหาเคส, เลขบิล, บริษัท..." value={topbarSearch} onChange={e => { setTopbarSearch(e.target.value); if (route !== 'cases') gotoCases(); }} onFocus={() => { if (route !== 'cases') gotoCases(); }} />
           </div>
 
           {/* ===== Date range picker — Calendar พ.ศ. ===== */}
@@ -2634,7 +2636,7 @@ function App() {
 
         <main className="content">
           {route === 'dashboard' && <Dashboard cases={displayCases} onOpenCase={setOpenCase} onGotoCases={gotoCases} onUpload={() => setShowUpload(true)} />}
-          {route === 'cases' && <ErrorBoundary key={'cases-' + (casesFilter || 'all')}><CasesView cases={displayCases} view={view} setView={setView} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onUpload={() => setShowUpload(true)} onExport={() => exportCases(null)} initialFilter={casesFilter} key={casesFilter || 'all'} /></ErrorBoundary>}
+          {route === 'cases' && <ErrorBoundary key={'cases-' + (casesFilter || 'all')}><CasesView cases={displayCases} view={view} setView={setView} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onUpload={() => setShowUpload(true)} onExport={() => exportCases(null)} initialFilter={casesFilter} initialQ={topbarSearch} key={casesFilter || 'all'} /></ErrorBoundary>}
           {route === 'sc' && <SCDashboard cases={displayCases} onOpenCase={setOpenCase} onSetStatus={setStatus} onConfirm={confirmCase} />}
           {route === 'cc' && <CCDashboard cases={displayCases} onOpenCase={setOpenCase} onSetStatus={setStatus} onConfirm={confirmCase} />}
           {route === 'considerco' && <ErrorBoundary key="considerco"><ConsiderCoView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onSetConsiderCoResult={setConsiderCoResult} /></ErrorBoundary>}
