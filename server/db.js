@@ -149,7 +149,7 @@ const importCases = async (rows) => {
   try {
     await client.query('BEGIN');
     for (const r of rows) {
-      const status    = EXCEL_STATUS_MAP[r.excelStatus] || 'received';
+      const status    = EXCEL_STATUS_MAP[r.excelStatus] || null;
       const confirmed = r.confirmedText === 'ยืนยันรับ';
       const owner     = (r.owner   && r.owner   !== '—') ? r.owner   : '—';
       const ownerCC   = (r.ownerCC && r.ownerCC !== '—') ? r.ownerCC : '—';
@@ -176,10 +176,6 @@ const importCases = async (rows) => {
            product_type = EXCLUDED.product_type,
            load_point   = EXCLUDED.load_point,
            unload_point = EXCLUDED.unload_point,
-           bill_status  = EXCLUDED.bill_status,
-           confirmed    = EXCLUDED.confirmed,
-           owner        = EXCLUDED.owner,
-           owner_cc     = EXCLUDED.owner_cc,
            fault_dc     = EXCLUDED.fault_dc,
            claim_amount = EXCLUDED.claim_amount`,
         [r.receiptNo, r.receiptNo, r.docDate, r.damageType, r.billNo, r.billDate,

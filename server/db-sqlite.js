@@ -55,7 +55,7 @@ const init = async () => {
       product_type      TEXT,
       load_point        TEXT,
       unload_point      TEXT,
-      bill_status       TEXT DEFAULT 'received',
+      bill_status       TEXT DEFAULT NULL,
       confirmed         INTEGER DEFAULT 0,
       confirm_at        TEXT,
       owner             TEXT DEFAULT '—',
@@ -174,10 +174,6 @@ const importCases = async (rows) => {
       product_type  = excluded.product_type,
       load_point    = excluded.load_point,
       unload_point  = excluded.unload_point,
-      bill_status   = excluded.bill_status,
-      confirmed     = excluded.confirmed,
-      owner         = excluded.owner,
-      owner_cc      = excluded.owner_cc,
       fault_dc      = excluded.fault_dc,
       claim_amount  = excluded.claim_amount
   `);
@@ -188,7 +184,7 @@ const importCases = async (rows) => {
 
   const doImport = db.transaction((list) => {
     for (const r of list) {
-      const status    = EXCEL_STATUS_MAP[r.excelStatus] || 'received';
+      const status    = EXCEL_STATUS_MAP[r.excelStatus] || null;
       const confirmed = r.confirmedText === 'ยืนยันรับ' ? 1 : 0;
       const owner     = (r.owner   && r.owner   !== '—') ? r.owner   : '—';
       const ownerCC   = (r.ownerCC && r.ownerCC !== '—') ? r.ownerCC : '—';

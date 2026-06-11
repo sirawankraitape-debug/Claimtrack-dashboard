@@ -445,7 +445,7 @@ function fmtDateTime(d) {
 // ===== สร้าง object เคสจากแถวดิบ + ฟิลด์ที่จัดการในแอป =====
 let __seq = 0;
 function makeCase(row, opts = {}) {
-  const status = opts.status || 'received';
+  const status = opts.status || '';
   const confirmed = opts.confirmed != null ? opts.confirmed : false;
   const owner   = opts.owner   || '—';
   const ownerCC = opts.ownerCC || '—';
@@ -1565,7 +1565,7 @@ function CaseDrawer({ caseData, onClose, onAction, onConfirm }) {
   const [tab, setTab] = useStateD('detail');
   if (!caseData) return null;
   const c = caseData;
-  const s = window.STATUS_MAP[c.billStatus];
+  const s = window.STATUS_MAP[c.billStatus] || { color: '#94A3B8', label: 'ยังไม่ระบุสถานะ', key: null, terminal: false };
 
   const fields = [
     ['เลขที่รับบิลเข้าระบบ', c.receiptNo], ['วันที่เอกสาร', c.docDate],
@@ -3144,7 +3144,7 @@ function CCPersonCards({ ccCases, onOpenCase }) {
 
   const countCards = CC_COUNT_ONLY.map(key => {
     const s = window.STATUS_MAP[key]; if (!s) return null;
-    const grp = ccCases.filter(c => c.billStatus === key);
+    const grp = confirmedCases.filter(c => c.billStatus === key);
     if (!grp.length) return null;
     return { key, s, grp };
   }).filter(Boolean);

@@ -20,10 +20,17 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
 // เสิร์ฟไฟล์ HTML + static จากโฟลเดอร์ parent
+// รองรับทั้งชื่อ index.html และชื่อภาษาไทย
 app.use(express.static(path.join(__dirname, '..')));
-app.get('/', (req, res) =>
-  res.sendFile(path.join(__dirname, '..', 'ระบบติดตามยืนยันเคสเคลม.html'))
-);
+app.get('/', (req, res) => {
+  const fs = require('fs');
+  const candidates = ['index.html', 'ระบบติดตามยืนยันเคสเคลม.html'];
+  for (const name of candidates) {
+    const full = path.join(__dirname, '..', name);
+    if (fs.existsSync(full)) return res.sendFile(full);
+  }
+  res.status(404).send('ไม่พบไฟล์ HTML');
+});
 
 // ─── SSE — Real-time broadcast ────────────────────────────────
 const sseClients = new Set();
