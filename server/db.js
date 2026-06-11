@@ -13,13 +13,15 @@ const pool = new Pool({
 
 // ───── Default statuses ────────────────────────────────────────
 const DEFAULT_STATUSES = [
-  { key:'received',      label:'ได้รับเอกสารแล้ว',                  color:'#3B82F6', grp:'ดำเนินการ',    terminal:false, sort_order:1  },
-  { key:'find_owner',    label:'อยู่ระหว่างขอรายชื่อผู้รับผิดชอบ',   color:'#F59E0B', grp:'ดำเนินการ',    terminal:false, sort_order:2  },
-  { key:'sent_owner',    label:'ส่งเอกสารให้ผู้รับผิดชอบ',           color:'#8B5CF6', grp:'ดำเนินการ',    terminal:false, sort_order:3  },
-  { key:'new_proof',     label:'อยู่ระหว่างขอหลักฐานใหม่',          color:'#FB923C', grp:'ดำเนินการ',    terminal:false, sort_order:4  },
-  { key:'confirm_price', label:'อยู่ระหว่างยืนยันราคาเคลม',         color:'#14B8A6', grp:'ดำเนินการ',    terminal:false, sort_order:5  },
+  { key:'new_proof',     label:'อยู่ระหว่างขอหลักฐานใหม่',          color:'#FB923C', grp:'ดำเนินการ',    terminal:false, sort_order:1  },
+  { key:'confirm_price', label:'อยู่ระหว่างยืนยันราคาเคลม',         color:'#14B8A6', grp:'ดำเนินการ',    terminal:false, sort_order:2  },
+  { key:'find_owner',    label:'อยู่ระหว่างขอรายชื่อผู้รับผิดชอบ',   color:'#F59E0B', grp:'ดำเนินการ',    terminal:false, sort_order:3  },
+  { key:'sent_owner',    label:'ส่งเอกสารให้ผู้รับผิดชอบ',           color:'#8B5CF6', grp:'ดำเนินการ',    terminal:false, sort_order:4  },
+  { key:'received',      label:'ได้รับเอกสารแล้ว',                  color:'#3B82F6', grp:'ดำเนินการ',    terminal:false, sort_order:5  },
   { key:'consider_co',   label:'ขอพิจารณาลงบริษัท',                 color:'#EC4899', grp:'ดำเนินการ',    terminal:false, sort_order:6  },
-  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:true,  sort_order:7  },
+  { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:false, sort_order:7  },
+  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:true,  sort_order:8  },
+  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:true,  sort_order:9  },
   { key:'A00', label:'A00 อยู่ระหว่างการพิจารณา',                   color:'#38BDF8', grp:'สถานะเคลม',    terminal:false, sort_order:10 },
   { key:'A01', label:'A01 อยู่ระหว่างการส่งเอกสารประกอบการเคลม',    color:'#818CF8', grp:'สถานะเคลม',    terminal:false, sort_order:11 },
   { key:'A02', label:'A02 อยู่ระหว่างการตรวจสอบเอกสาร',             color:'#A78BFA', grp:'สถานะเคลม',    terminal:false, sort_order:12 },
@@ -51,7 +53,7 @@ const init = async () => {
       product_type        TEXT,
       load_point          TEXT,
       unload_point        TEXT,
-      bill_status         TEXT DEFAULT 'received',
+      bill_status         TEXT DEFAULT NULL,
       confirmed           BOOLEAN DEFAULT false,
       owner               TEXT DEFAULT '—',
       owner_cc            TEXT DEFAULT '—',
@@ -82,14 +84,14 @@ const init = async () => {
     );
   `);
 
-  const { rows } = await pool.query('SELECT COUNT(*) AS n FROM statuses');
-  if (parseInt(rows[0].n) === 0) {
-    for (const s of DEFAULT_STATUSES) {
-      await pool.query(
-        `INSERT INTO statuses (key,label,color,grp,terminal,sort_order) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
-        [s.key, s.label, s.color, s.grp, s.terminal, s.sort_order]
-      );
-    }
+  // Upsert default statuses and always sync sort_order
+  for (const s of DEFAULT_STATUSES) {
+    await pool.query(
+      `INSERT INTO statuses (key,label,color,grp,terminal,sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (key) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
+      [s.key, s.label, s.color, s.grp, s.terminal, s.sort_order]
+    );
   }
 };
 
