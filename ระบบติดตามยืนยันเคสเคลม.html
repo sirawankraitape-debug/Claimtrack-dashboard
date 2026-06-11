@@ -1208,9 +1208,8 @@ const dl = window.dispLabel;
 
 const { normalizeDamage, DAMAGE_GROUP_ORDER } = window;
 
-function CasesView({ cases, view, setView, onOpenCase, onConfirm, onSetStatus, onAddStatus, onUpload, onExport, initialFilter, initialQ }) {
-  const [q, setQ] = useStateC(initialQ || '');
-  useEffectC(() => { setQ(initialQ || ''); }, [initialQ]);
+function CasesView({ cases, view, setView, onOpenCase, onConfirm, onSetStatus, onAddStatus, onUpload, onExport, initialFilter, topbarSearch }) {
+  const [q, setQ] = useStateC('');
   const [statusFilter, setStatusFilter] = useStateC(initialFilter && window.STATUS_MAP[initialFilter] ? initialFilter : 'all');
   const [onlyUnconfirmed, setOnlyUnconfirmed] = useStateC(initialFilter === 'unconfirmed');
   const [scFilter, setScFilter]       = useStateC('all');
@@ -1243,9 +1242,10 @@ function CasesView({ cases, view, setView, onOpenCase, onConfirm, onSetStatus, o
       if (scFilter !== 'all' && c.owner      !== scFilter)  return false;
       if (ccFilter !== 'all' && c.ownerCC    !== ccFilter)  return false;
       if (damageFilter !== 'all' && normalizeDamage(c.damageType) !== damageFilter) return false;
-      if (q) {
+      const searchTerm = topbarSearch || q;
+      if (searchTerm) {
         const hay = `${c.id} ${c.receiptNo} ${c.billNo} ${c.sender} ${c.receiver} ${c.productType} ${c.damageType} ${c.loadPoint} ${c.unloadPoint}`.toLowerCase();
-        if (!hay.includes(q.toLowerCase())) return false;
+        if (!hay.includes(searchTerm.toLowerCase())) return false;
       }
       return true;
     });
@@ -1260,7 +1260,7 @@ function CasesView({ cases, view, setView, onOpenCase, onConfirm, onSetStatus, o
       return pd(b.docDate) - pd(a.docDate);
     });
     return r;
-  }, [cases, q, statusFilter, onlyUnconfirmed, scFilter, ccFilter, damageFilter]);
+  }, [cases, q, topbarSearch, statusFilter, onlyUnconfirmed, scFilter, ccFilter, damageFilter]);
 
   return (
     <div className="page-pad" style={{ display:'flex', flexDirection:'column', gap:16, height:'100%' }}>
@@ -2636,7 +2636,7 @@ function App() {
 
         <main className="content">
           {route === 'dashboard' && <Dashboard cases={displayCases} onOpenCase={setOpenCase} onGotoCases={gotoCases} onUpload={() => setShowUpload(true)} />}
-          {route === 'cases' && <ErrorBoundary key={'cases-' + (casesFilter || 'all')}><CasesView cases={displayCases} view={view} setView={setView} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onUpload={() => setShowUpload(true)} onExport={() => exportCases(null)} initialFilter={casesFilter} initialQ={topbarSearch} key={casesFilter || 'all'} /></ErrorBoundary>}
+          {route === 'cases' && <ErrorBoundary key={'cases-' + (casesFilter || 'all')}><CasesView cases={displayCases} view={view} setView={setView} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onUpload={() => setShowUpload(true)} onExport={() => exportCases(null)} initialFilter={casesFilter} topbarSearch={topbarSearch} key={casesFilter || 'all'} /></ErrorBoundary>}
           {route === 'sc' && <SCDashboard cases={displayCases} onOpenCase={setOpenCase} onSetStatus={setStatus} onConfirm={confirmCase} />}
           {route === 'cc' && <CCDashboard cases={displayCases} onOpenCase={setOpenCase} onSetStatus={setStatus} onConfirm={confirmCase} />}
           {route === 'considerco' && <ErrorBoundary key="considerco"><ConsiderCoView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onSetConsiderCoResult={setConsiderCoResult} /></ErrorBoundary>}
