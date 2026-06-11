@@ -2866,6 +2866,7 @@ function SCPersonCards({ scCases, onOpenCase }) {
                   <th>สินค้า</th>
                   <th style={{textAlign:'center'}}>วันที่เอกสาร</th>
                   <th style={{textAlign:'center'}}>วันยืนยันรับ</th>
+                  <th>ผู้รับผิดชอบ (CC)</th>
                   <th style={{textAlign:'center',color:'#FBBF24'}}>ค้างในสถานะ ↓</th>
                   <th style={{textAlign:'center',color:'#F87171'}}>ตั้งแต่ยืนยัน</th>
                   <th style={{textAlign:'right'}}>มูลค่ายืนยัน</th>
@@ -2884,6 +2885,7 @@ function SCPersonCards({ scCases, onOpenCase }) {
                       <td style={{color:'var(--text-2)'}}>{c.productType||'—'}</td>
                       <td style={{textAlign:'center',color:'var(--text-2)',whiteSpace:'nowrap'}}>{c.docDate||'—'}</td>
                       <td style={{textAlign:'center',color:'var(--text-2)',whiteSpace:'nowrap'}}>{confirmAt?window.fmtDate(confirmAt):'—'}</td>
+                      <td style={{fontSize:11.5}}>{(!c.ownerCC||c.ownerCC==='—')?<span style={{color:'var(--text-muted)'}}>ยังไม่ระบุ</span>:<span style={{display:'flex',alignItems:'center',gap:5}}><Avatar name={c.ownerCC} size={20}/>{c.ownerCC}</span>}</td>
                       <td style={{textAlign:'center'}}>
                         <span style={{fontWeight:800,fontSize:14,color:dc(dS||0),fontFeatureSettings:'"tnum"'}}>{dS!=null?dS:'—'}</span>
                         {dS!=null&&<span style={{fontSize:10,color:'var(--text-muted)',marginLeft:2}}>วัน</span>}
