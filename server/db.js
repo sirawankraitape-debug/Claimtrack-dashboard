@@ -93,6 +93,9 @@ const init = async () => {
       [s.key, s.label, s.color, s.grp, s.terminal, s.sort_order]
     );
   }
+
+  // ล้าง status เคสที่ยังไม่ยืนยัน (migration สำหรับข้อมูลเก่า)
+  await pool.query('UPDATE cases SET bill_status = NULL WHERE confirmed = false AND bill_status IS NOT NULL');
 };
 
 // ───── Cases ────────────────────────────────────────────────────

@@ -97,6 +97,9 @@ const init = async () => {
     const seedAll = db.transaction((list) => list.forEach(s => ins.run(s)));
     seedAll(DEFAULT_STATUSES);
   }
+
+  // ล้าง status เคสที่ยังไม่ยืนยัน (migration สำหรับข้อมูลเก่า)
+  db.prepare('UPDATE cases SET bill_status = NULL WHERE confirmed = 0 AND bill_status IS NOT NULL').run();
 };
 
 // ───── Cases ────────────────────────────────────────────────────
