@@ -106,13 +106,20 @@ const init = async () => {
   // ล้าง status เคสที่ยังไม่ยืนยัน (migration สำหรับข้อมูลเก่า)
   await pool.query('UPDATE cases SET bill_status = NULL WHERE confirmed = false AND bill_status IS NOT NULL');
 
-  // Seed default admin ถ้ายังไม่มี user
+  // Seed default users ถ้ายังไม่มี user
   const { rows: userRows } = await pool.query('SELECT COUNT(*) AS n FROM users');
   if (parseInt(userRows[0].n) === 0) {
-    await pool.query(
-      `INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)`,
-      ['admin', 'admin1234', 'ผู้ดูแลระบบ', 'admin']
-    );
+    const seedUsers = [
+      ['admin',      'admin1234',      'ผู้ดูแลระบบ', 'admin'],
+      ['standard',   'standard1234',   'Standard',    'user'],
+      ['clearclaim', 'clearclaim1234', 'Clear Claim',  'user'],
+    ];
+    for (const [u, p, d, r] of seedUsers) {
+      await pool.query(
+        `INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)`,
+        [u, p, d, r]
+      );
+    }
   }
 };
 

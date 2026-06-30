@@ -96,11 +96,16 @@ const init = async () => {
     );
   `);
 
-  // Seed default admin ถ้ายังไม่มี user
+  // Seed default users ถ้ายังไม่มี user
   const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
   if (userCount === 0) {
-    db.prepare(`INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)`)
-      .run('admin', 'admin1234', 'ผู้ดูแลระบบ', 'admin');
+    const insUser = db.prepare(`INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)`);
+    const seedUsers = [
+      ['admin',      'admin1234',      'ผู้ดูแลระบบ', 'admin'],
+      ['standard',   'standard1234',   'Standard',    'user'],
+      ['clearclaim', 'clearclaim1234', 'Clear Claim',  'user'],
+    ];
+    for (const [u, p, d, r] of seedUsers) insUser.run(u, p, d, r);
   }
 
   // Seed statuses ถ้ายังไม่มี
