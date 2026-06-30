@@ -135,6 +135,43 @@ app.post('/api/restore', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Auth API ─────────────────────────────────────────────────
+app.post('/api/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'กรุณากรอกชื่อผู้ใช้และรหัสผ่าน' });
+    const user = await DB.loginUser(username, password);
+    if (!user) return res.status(401).json({ error: 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' });
+    res.json({ ok: true, user });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/users', async (req, res) => {
+  try { res.json(await DB.getAllUsers()); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const user = await DB.addUser(req.body);
+    res.json(user);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.patch('/api/users/:id', async (req, res) => {
+  try {
+    await DB.updateUser(Number(req.params.id), req.body);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    await DB.deleteUser(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ─── Health check ─────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', db: DB_MODE, clients: sseClients.size }));
 

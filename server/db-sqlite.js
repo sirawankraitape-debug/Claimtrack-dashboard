@@ -85,7 +85,23 @@ const init = async () => {
       terminal   INTEGER DEFAULT 0,
       sort_order INTEGER DEFAULT 999
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      username   TEXT UNIQUE NOT NULL,
+      password   TEXT NOT NULL,
+      display_name TEXT,
+      role       TEXT DEFAULT 'user',
+      created_at TEXT DEFAULT (datetime('now'))
+    );
   `);
+
+  // Seed default admin ถ้ายังไม่มี user
+  const userCount = db.prepare('SELECT COUNT(*) AS n FROM users').get().n;
+  if (userCount === 0) {
+    db.prepare(`INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)`)
+      .run('admin', 'admin1234', 'ผู้ดูแลระบบ', 'admin');
+  }
 
   // Seed statuses ถ้ายังไม่มี
   const count = db.prepare('SELECT COUNT(*) AS n FROM statuses').get().n;
@@ -324,4 +340,36 @@ const restoreAll = async (cases, statuses) => {
   doRestore();
 };
 
-module.exports = { init, getAllCases, importCases, updateCase, addEvent, getAllStatuses, addStatus, deleteStatus, restoreAll };
+// ───── Users / Auth ─────────────────────────────────────────────
+const loginUser = async (username, password) => {
+  const user = db.prepare('SELECT * FROM users WHERE username = ? AND password = ?').get(username, password);
+  if (!user) return null;
+  return { id: user.id, username: user.username, displayName: user.display_name, role: user.role };
+};
+
+const getAllUsers = async () => {
+  return db.prepare('SELECT id, username, display_name, role, created_at FROM users ORDER BY id ASC').all()
+    .map(u => ({ id: u.id, username: u.username, displayName: u.display_name, role: u.role, createdAt: u.created_at }));
+};
+
+const addUser = async ({ username, password, displayName, role = 'user' }) => {
+  const info = db.prepare('INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)').run(username, password, displayName || username, role);
+  return { id: info.lastInsertRowid, username, displayName: displayName || username, role };
+};
+
+const updateUser = async (id, patch) => {
+  const fields = [];
+  const vals   = [];
+  if (patch.password    !== undefined) { fields.push('password = ?');     vals.push(patch.password); }
+  if (patch.displayName !== undefined) { fields.push('display_name = ?'); vals.push(patch.displayName); }
+  if (patch.role        !== undefined) { fields.push('role = ?');          vals.push(patch.role); }
+  if (!fields.length) return;
+  vals.push(id);
+  db.prepare(`UPDATE users SET ${fields.join(', ')} WHERE id = ?`).run(...vals);
+};
+
+const deleteUser = async (id) => {
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+};
+
+module.exports = { init, getAllCases, importCases, updateCase, addEvent, getAllStatuses, addStatus, deleteStatus, restoreAll, loginUser, getAllUsers, addUser, updateUser, deleteUser };

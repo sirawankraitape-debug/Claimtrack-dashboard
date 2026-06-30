@@ -179,6 +179,43 @@ input, button, textarea, select { font-family: inherit; }
 @keyframes pop { from { transform: scale(.95) translateY(10px); opacity: 0; } }
 @keyframes toastIn { from { transform: translate(-50%, 20px); opacity: 0; } }
 
+/* ─── Login page ─── */
+.login-wrap {
+  min-height: 100vh; display: grid; place-items: center;
+  background: linear-gradient(135deg, #0A0F1C 0%, #111829 60%, #0D1322 100%);
+}
+.login-card {
+  width: 100%; max-width: 400px; background: #111829;
+  border: 1px solid rgba(255,255,255,.08); border-radius: 20px;
+  padding: 36px 32px; box-shadow: 0 24px 64px rgba(0,0,0,.6);
+  animation: pop .32s cubic-bezier(.22,1,.36,1);
+}
+.login-logo { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #2563EB, #60A5FA); box-shadow: 0 8px 24px rgba(37,99,235,.4);
+  margin: 0 auto 20px; }
+.login-title { text-align: center; font-family: 'Anuphan', sans-serif; font-size: 22px;
+  font-weight: 700; color: #E8EDF7; margin-bottom: 4px; }
+.login-sub { text-align: center; font-size: 13px; color: #6B7794; margin-bottom: 28px; }
+.login-field { margin-bottom: 16px; }
+.login-label { font-size: 12px; color: #AEB9CE; margin-bottom: 6px; display: block; }
+.login-input {
+  width: 100%; background: #0A0F1C; border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px; padding: 11px 14px; color: #E8EDF7; font-size: 14px;
+  font-family: 'Anuphan', sans-serif; outline: none; transition: border-color .15s;
+}
+.login-input:focus { border-color: #2563EB; }
+.login-btn {
+  width: 100%; padding: 12px; background: linear-gradient(135deg, #2563EB, #3B82F6);
+  border: none; border-radius: 10px; color: #fff; font-size: 15px; font-weight: 700;
+  font-family: 'Anuphan', sans-serif; cursor: pointer; margin-top: 8px;
+  box-shadow: 0 6px 20px rgba(37,99,235,.4); transition: opacity .15s;
+}
+.login-btn:hover { opacity: .9; }
+.login-btn:disabled { opacity: .6; cursor: not-allowed; }
+.login-err { background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3);
+  color: #FCA5A5; border-radius: 9px; padding: 10px 14px; font-size: 13px;
+  margin-bottom: 14px; text-align: center; }
+
 @media (max-width: 1100px) {
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .dash-cols { grid-template-columns: 1fr; }
@@ -2200,8 +2237,55 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// ─── LoginPage ────────────────────────────────────────────────
+function LoginPage({ onLogin }) {
+  const [username, setUsername] = useStateA('');
+  const [password, setPassword] = useStateA('');
+  const [error, setError]       = useStateA('');
+  const [loading, setLoading]   = useStateA(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!username.trim() || !password) return setError('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+    setError(''); setLoading(true);
+    try {
+      const res  = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username.trim(), password }) });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'เข้าสู่ระบบไม่สำเร็จ'); setLoading(false); return; }
+      onLogin(data.user);
+    } catch { setError('ไม่สามารถเชื่อมต่อ server ได้'); setLoading(false); }
+  };
+
+  return (
+    <div className="login-wrap">
+      <form className="login-card" onSubmit={handleSubmit}>
+        <div className="login-logo">
+          <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#fff" strokeWidth="2">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+        </div>
+        <h1 className="login-title">ClaimTrack</h1>
+        <p className="login-sub">ระบบติดตามยืนยันเคสเคลม</p>
+        {error && <div className="login-err">{error}</div>}
+        <div className="login-field">
+          <label className="login-label">ชื่อผู้ใช้</label>
+          <input className="login-input" type="text" autoComplete="username" placeholder="กรอกชื่อผู้ใช้" value={username} onChange={e => setUsername(e.target.value)} autoFocus />
+        </div>
+        <div className="login-field">
+          <label className="login-label">รหัสผ่าน</label>
+          <input className="login-input" type="password" autoComplete="current-password" placeholder="กรอกรหัสผ่าน" value={password} onChange={e => setPassword(e.target.value)} />
+        </div>
+        <button className="login-btn" type="submit" disabled={loading}>{loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ'}</button>
+      </form>
+    </div>
+  );
+}
+
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [currentUser, setCurrentUser] = useStateA(() => {
+    try { const u = sessionStorage.getItem('ct_user'); return u ? JSON.parse(u) : null; } catch { return null; }
+  });
   const [cases, setCases]       = useStateA(() => IS_SERVER ? [] : lsLoad(LS_CASES,    window.CASES));
   const [statuses, setStatuses] = useStateA(() => IS_SERVER ? [...window.STATUSES] : lsLoad(LS_STATUSES, window.STATUSES));
   const [route, setRoute] = useStateA('dashboard');
@@ -2308,6 +2392,17 @@ function App() {
     r.style.setProperty('--font-display', `'${t.font}', sans-serif`);
     r.setAttribute('data-density', t.density);
   }, [t.theme, t.accent, t.radius, t.font, t.density]);
+
+  const handleLogin = (user) => {
+    try { sessionStorage.setItem('ct_user', JSON.stringify(user)); } catch {}
+    setCurrentUser(user);
+  };
+  const handleLogout = () => {
+    try { sessionStorage.removeItem('ct_user'); } catch {}
+    setCurrentUser(null);
+  };
+
+  if (IS_SERVER && !currentUser) return <LoginPage onLogin={handleLogin} />;
 
   const showToast = (msg, kind) => { const id = Date.now(); setToast({ id, msg, kind }); setTimeout(() => setToast((c) => c && c.id === id ? null : c), 2800); };
 
@@ -2591,11 +2686,23 @@ function App() {
         </nav>
         <div className="sidebar-foot">
           <div className="user-chip">
-            <Avatar name="ผู้ดูแลระบบ" size={34} />
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>ผู้ดูแลระบบ</div>
-              <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ฝ่ายเคลียร์เคลม</div>
+            <Avatar name={currentUser ? currentUser.displayName : 'ผู้ดูแลระบบ'} size={34} />
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {currentUser ? currentUser.displayName : 'ผู้ดูแลระบบ'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+                {currentUser ? (currentUser.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้งาน') : 'ฝ่ายเคลียร์เคลม'}
+              </div>
             </div>
+            {IS_SERVER && currentUser && (
+              <button onClick={handleLogout} title="ออกจากระบบ" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4, borderRadius: 8, display: 'grid', placeItems: 'center', flexShrink: 0, transition: 'color .15s' }}
+                onMouseEnter={e => e.currentTarget.style.color='#EF4444'} onMouseLeave={e => e.currentTarget.style.color='var(--text-muted)'}>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </aside>

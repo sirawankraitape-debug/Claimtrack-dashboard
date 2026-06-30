@@ -82,6 +82,15 @@ const init = async () => {
       terminal   BOOLEAN DEFAULT false,
       sort_order INTEGER DEFAULT 999
     );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id           SERIAL PRIMARY KEY,
+      username     TEXT UNIQUE NOT NULL,
+      password     TEXT NOT NULL,
+      display_name TEXT,
+      role         TEXT DEFAULT 'user',
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    );
   `);
 
   // Upsert default statuses and always sync sort_order
@@ -96,6 +105,15 @@ const init = async () => {
 
   // ล้าง status เคสที่ยังไม่ยืนยัน (migration สำหรับข้อมูลเก่า)
   await pool.query('UPDATE cases SET bill_status = NULL WHERE confirmed = false AND bill_status IS NOT NULL');
+
+  // Seed default admin ถ้ายังไม่มี user
+  const { rows: userRows } = await pool.query('SELECT COUNT(*) AS n FROM users');
+  if (parseInt(userRows[0].n) === 0) {
+    await pool.query(
+      `INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4)`,
+      ['admin', 'admin1234', 'ผู้ดูแลระบบ', 'admin']
+    );
+  }
 };
 
 // ───── Cases ────────────────────────────────────────────────────
@@ -306,4 +324,42 @@ const restoreAll = async (cases, statuses) => {
   }
 };
 
-module.exports = { init, getAllCases, importCases, updateCase, addEvent, getAllStatuses, addStatus, deleteStatus, restoreAll, pool };
+// ───── Users / Auth ─────────────────────────────────────────────
+const loginUser = async (username, password) => {
+  const { rows } = await pool.query(
+    'SELECT * FROM users WHERE username = $1 AND password = $2',
+    [username, password]
+  );
+  if (!rows[0]) return null;
+  const u = rows[0];
+  return { id: u.id, username: u.username, displayName: u.display_name, role: u.role };
+};
+
+const getAllUsers = async () => {
+  const { rows } = await pool.query('SELECT id, username, display_name, role, created_at FROM users ORDER BY id ASC');
+  return rows.map(u => ({ id: u.id, username: u.username, displayName: u.display_name, role: u.role, createdAt: u.created_at }));
+};
+
+const addUser = async ({ username, password, displayName, role = 'user' }) => {
+  const { rows } = await pool.query(
+    'INSERT INTO users (username, password, display_name, role) VALUES ($1, $2, $3, $4) RETURNING id',
+    [username, password, displayName || username, role]
+  );
+  return { id: rows[0].id, username, displayName: displayName || username, role };
+};
+
+const updateUser = async (id, patch) => {
+  const fields = [], vals = [];
+  if (patch.password    !== undefined) { fields.push(`password=$${fields.length+1}`);     vals.push(patch.password); }
+  if (patch.displayName !== undefined) { fields.push(`display_name=$${fields.length+1}`); vals.push(patch.displayName); }
+  if (patch.role        !== undefined) { fields.push(`role=$${fields.length+1}`);          vals.push(patch.role); }
+  if (!fields.length) return;
+  vals.push(id);
+  await pool.query(`UPDATE users SET ${fields.join(', ')} WHERE id=$${vals.length}`, vals);
+};
+
+const deleteUser = async (id) => {
+  await pool.query('DELETE FROM users WHERE id=$1', [id]);
+};
+
+module.exports = { init, getAllCases, importCases, updateCase, addEvent, getAllStatuses, addStatus, deleteStatus, restoreAll, loginUser, getAllUsers, addUser, updateUser, deleteUser, pool };
