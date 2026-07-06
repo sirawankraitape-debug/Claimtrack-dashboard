@@ -4211,11 +4211,11 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 // หน้าเคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ
 // ===================================================================
 function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
-  const { useState: useStateDL, useMemo: useMemoDL, useRef: useRefDL } = React;
+  const { useState: useStateDL, useMemo: useMemoDL } = React;
   const [q, setQ] = useStateDL('');
   const [selectedSC, setSelectedSC] = useStateDL('all');
   const [selectedCC, setSelectedCC] = useStateDL('all');
-  const resultsRef = useRefDL(null);
+  const [lastPicked, setLastPicked] = useStateDL(null); // 'sc' | 'cc' | null — เลือกว่าจะแสดงรายการเคสใต้การ์ดกลุ่มไหน
   const STATUS = window.STATUS_MAP['delay_analyze'];
   const COLOR = STATUS ? STATUS.color : '#EA580C';
   const TITLE = STATUS ? STATUS.label : 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ';
@@ -4256,12 +4256,9 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
     filtered.filter(c => c.claimAmount != null).reduce((s,c) => s + Number(c.claimAmount), 0),
   [filtered]);
 
-  // เลื่อนลงไปที่รายการเคสเมื่อกดการ์ด SC/CC
-  const scrollToResults = () => {
-    if (resultsRef.current) resultsRef.current.scrollIntoView({ block:'start' });
-  };
-  const pickSC = (name) => { setSelectedSC(name); if (name !== 'all') scrollToResults(); };
-  const pickCC = (name) => { setSelectedCC(name); if (name !== 'all') scrollToResults(); };
+  // กดการ์ด SC/CC → เลือกตัวกรอง + จำว่าจะแสดงรายการเคสใต้กลุ่มไหน
+  const pickSC = (name) => { setSelectedSC(name); setLastPicked(name === 'all' ? (selectedCC !== 'all' ? 'cc' : null) : 'sc'); };
+  const pickCC = (name) => { setSelectedCC(name); setLastPicked(name === 'all' ? (selectedSC !== 'all' ? 'sc' : null) : 'cc'); };
 
   const dl = window.dispLabel;
   const dc = (d) => d > 7 ? '#F87171' : d > 3 ? '#FBBF24' : '#34D399';
@@ -4285,111 +4282,10 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
     return entryDate ? Math.max(0, Math.round((new Date() - entryDate) / 86400000)) : null;
   };
 
-  return (
-    <div className="page-pad" style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:14 }}>
-        <div>
-          <div style={{ fontSize:13, color: COLOR, fontWeight:600, letterSpacing:'.04em' }}>สถานะพิเศษ</div>
-          <h1 style={{ fontFamily:'var(--font-display)', fontSize:26, fontWeight:700, margin:'4px 0 0', letterSpacing:'-0.02em', color: COLOR }}>{TITLE}</h1>
-          <div style={{ fontSize:13.5, color:'var(--text-muted)', marginTop:4 }}>เคสที่อยู่ในสถานะ “{TITLE}”</div>
-        </div>
-      </div>
-
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:14 }}>
-        {[
-          { label:'เคสทั้งหมด', value: filtered.length,                                          icon:'clock', color: COLOR    },
-          { label:'มูลค่ารวม',  value: totalAmt > 0 ? '฿'+totalAmt.toLocaleString('th-TH'):'—',  icon:'note',  color:'#34D399' },
-        ].map(({ label, value, icon, color }) => (
-          <div key={label} className="stat-card" style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--radius-card)', padding:'16px 18px', position:'relative', overflow:'hidden' }}>
-            <div style={{ position:'absolute', inset:0, background:`radial-gradient(120% 120% at 100% 0%, ${hexA(color,.1)}, transparent 55%)`, pointerEvents:'none' }}></div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
-              <div style={{ fontSize:12.5, color:'var(--text-muted)', fontWeight:500 }}>{label}</div>
-              <span style={{ width:30, height:30, borderRadius:9, display:'grid', placeItems:'center', color, background:hexA(color,.12) }}><Icon name={icon} size={16} /></span>
-            </div>
-            <div style={{ fontSize:24, fontWeight:800, color:'var(--text)', marginTop:8, position:'relative', fontFeatureSettings:'"tnum"', letterSpacing:'-0.02em' }}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ===== การ์ดจำนวนเคสตามผู้รับผิดชอบ (SC) — คลิกเพื่อกรอง ===== */}
-      {scStats.length > 0 && (
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <Icon name="user" size={15} style={{ color:'var(--text-muted)' }} />
-            <span style={{ fontSize:12.5, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.03em' }}>จำนวนเคสตามผู้รับผิดชอบ (SC)</span>
-            <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>· คลิกเพื่อกรอง</span>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
-            {[{ name:'all', count: baseCases.length, amt: baseCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0) }, ...scStats].map(sc => {
-              const active = selectedSC === sc.name;
-              const isAll  = sc.name === 'all';
-              const label  = isAll ? 'ทั้งหมด' : sc.name === '—' ? 'ยังไม่มอบหมาย' : sc.name;
-              return (
-                <button key={sc.name} onClick={() => pickSC(active && !isAll ? 'all' : sc.name)} style={{
-                  textAlign:'left', cursor:'pointer', fontFamily:'inherit',
-                  background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
-                  border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
-                  boxShadow: active ? `0 3px 12px ${hexA(COLOR,.22)}` : 'none',
-                  outline: active ? `1px solid ${hexA(COLOR,.5)}` : 'none', transition:'all .14s',
-                }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                    {isAll
-                      ? <span style={{ width:24, height:24, borderRadius:7, display:'grid', placeItems:'center', background:hexA(COLOR,.14), color:COLOR }}><Icon name="layers" size={14}/></span>
-                      : <Avatar name={sc.name === '—' ? null : sc.name} size={24} />}
-                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'baseline', gap:5 }}>
-                    <span style={{ fontSize:22, fontWeight:800, color: active ? COLOR : 'var(--text)', fontFeatureSettings:'"tnum"' }}>{sc.count}</span>
-                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>เคส</span>
-                    {sc.amt > 0 && <span style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>฿{sc.amt.toLocaleString('th-TH')}</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ===== การ์ดจำนวนเคสตามผู้รับผิดชอบ (CC) — คลิกเพื่อกรอง ===== */}
-      {ccStats.length > 0 && (
-        <div>
-          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-            <Icon name="userPlus" size={15} style={{ color:'var(--text-muted)' }} />
-            <span style={{ fontSize:12.5, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.03em' }}>จำนวนเคสตามผู้รับผิดชอบ (CC)</span>
-            <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>· คลิกเพื่อกรอง</span>
-          </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
-            {[{ name:'all', count: baseCases.length, amt: baseCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0) }, ...ccStats].map(cc => {
-              const active = selectedCC === cc.name;
-              const isAll  = cc.name === 'all';
-              const label  = isAll ? 'ทั้งหมด' : cc.name === '—' ? 'ยังไม่มอบหมาย' : cc.name;
-              return (
-                <button key={cc.name} onClick={() => pickCC(active && !isAll ? 'all' : cc.name)} style={{
-                  textAlign:'left', cursor:'pointer', fontFamily:'inherit',
-                  background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
-                  border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
-                  boxShadow: active ? `0 3px 12px ${hexA(COLOR,.22)}` : 'none',
-                  outline: active ? `1px solid ${hexA(COLOR,.5)}` : 'none', transition:'all .14s',
-                }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                    {isAll
-                      ? <span style={{ width:24, height:24, borderRadius:7, display:'grid', placeItems:'center', background:hexA(COLOR,.14), color:COLOR }}><Icon name="layers" size={14}/></span>
-                      : <Avatar name={cc.name === '—' ? null : cc.name} size={24} />}
-                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
-                  </div>
-                  <div style={{ display:'flex', alignItems:'baseline', gap:5 }}>
-                    <span style={{ fontSize:22, fontWeight:800, color: active ? COLOR : 'var(--text)', fontFeatureSettings:'"tnum"' }}>{cc.count}</span>
-                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>เคส</span>
-                    {cc.amt > 0 && <span style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>฿{cc.amt.toLocaleString('th-TH')}</span>}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      <div className="toolbar" ref={resultsRef} style={{ scrollMarginTop:12 }}>
+  // แถบค้นหา + ตารางรายการเคส — วางไว้ใต้การ์ดกลุ่มที่ถูกกด (SC หรือ CC)
+  const resultsBlock = (
+    <>
+      <div className="toolbar">
         <div className="search-box">
           <Icon name="search" size={17} style={{ color:'var(--text-muted)', flexShrink:0 }} />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาเลขรับบิล, เลขบิล, บริษัท, สินค้า, DC..." />
@@ -4401,13 +4297,13 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
             {selectedSC !== 'all' && (
               <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:600, color:COLOR, background:hexA(COLOR,.1), padding:'4px 10px', borderRadius:99 }}>
                 SC · {selectedSC === '—' ? 'ยังไม่มอบหมาย' : selectedSC}
-                <button onClick={() => setSelectedSC('all')} title="ล้างตัวกรอง SC" style={{ background:'none', border:'none', color:COLOR, cursor:'pointer', display:'grid', placeItems:'center', padding:0 }}><Icon name="close" size={13} /></button>
+                <button onClick={() => pickSC('all')} title="ล้างตัวกรอง SC" style={{ background:'none', border:'none', color:COLOR, cursor:'pointer', display:'grid', placeItems:'center', padding:0 }}><Icon name="close" size={13} /></button>
               </span>
             )}
             {selectedCC !== 'all' && (
               <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:600, color:COLOR, background:hexA(COLOR,.1), padding:'4px 10px', borderRadius:99 }}>
                 CC · {selectedCC === '—' ? 'ยังไม่มอบหมาย' : selectedCC}
-                <button onClick={() => setSelectedCC('all')} title="ล้างตัวกรอง CC" style={{ background:'none', border:'none', color:COLOR, cursor:'pointer', display:'grid', placeItems:'center', padding:0 }}><Icon name="close" size={13} /></button>
+                <button onClick={() => pickCC('all')} title="ล้างตัวกรอง CC" style={{ background:'none', border:'none', color:COLOR, cursor:'pointer', display:'grid', placeItems:'center', padding:0 }}><Icon name="close" size={13} /></button>
               </span>
             )}
           </div>
@@ -4499,6 +4395,118 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
           </div>
         )}
       </div>
+    </>
+  );
+
+  return (
+    <div className="page-pad" style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:14 }}>
+        <div>
+          <div style={{ fontSize:13, color: COLOR, fontWeight:600, letterSpacing:'.04em' }}>สถานะพิเศษ</div>
+          <h1 style={{ fontFamily:'var(--font-display)', fontSize:26, fontWeight:700, margin:'4px 0 0', letterSpacing:'-0.02em', color: COLOR }}>{TITLE}</h1>
+          <div style={{ fontSize:13.5, color:'var(--text-muted)', marginTop:4 }}>เคสที่อยู่ในสถานะ “{TITLE}”</div>
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:14 }}>
+        {[
+          { label:'เคสทั้งหมด', value: filtered.length,                                          icon:'clock', color: COLOR    },
+          { label:'มูลค่ารวม',  value: totalAmt > 0 ? '฿'+totalAmt.toLocaleString('th-TH'):'—',  icon:'note',  color:'#34D399' },
+        ].map(({ label, value, icon, color }) => (
+          <div key={label} className="stat-card" style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--radius-card)', padding:'16px 18px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', inset:0, background:`radial-gradient(120% 120% at 100% 0%, ${hexA(color,.1)}, transparent 55%)`, pointerEvents:'none' }}></div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
+              <div style={{ fontSize:12.5, color:'var(--text-muted)', fontWeight:500 }}>{label}</div>
+              <span style={{ width:30, height:30, borderRadius:9, display:'grid', placeItems:'center', color, background:hexA(color,.12) }}><Icon name={icon} size={16} /></span>
+            </div>
+            <div style={{ fontSize:24, fontWeight:800, color:'var(--text)', marginTop:8, position:'relative', fontFeatureSettings:'"tnum"', letterSpacing:'-0.02em' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ===== การ์ดจำนวนเคสตามผู้รับผิดชอบ (SC) — คลิกเพื่อกรอง ===== */}
+      {scStats.length > 0 && (
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+            <Icon name="user" size={15} style={{ color:'var(--text-muted)' }} />
+            <span style={{ fontSize:12.5, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.03em' }}>จำนวนเคสตามผู้รับผิดชอบ (SC)</span>
+            <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>· คลิกเพื่อกรอง</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
+            {[{ name:'all', count: baseCases.length, amt: baseCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0) }, ...scStats].map(sc => {
+              const active = selectedSC === sc.name;
+              const isAll  = sc.name === 'all';
+              const label  = isAll ? 'ทั้งหมด' : sc.name === '—' ? 'ยังไม่มอบหมาย' : sc.name;
+              return (
+                <button key={sc.name} onClick={() => pickSC(active && !isAll ? 'all' : sc.name)} style={{
+                  textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+                  background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
+                  border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
+                  boxShadow: active ? `0 3px 12px ${hexA(COLOR,.22)}` : 'none',
+                  outline: active ? `1px solid ${hexA(COLOR,.5)}` : 'none', transition:'all .14s',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    {isAll
+                      ? <span style={{ width:24, height:24, borderRadius:7, display:'grid', placeItems:'center', background:hexA(COLOR,.14), color:COLOR }}><Icon name="layers" size={14}/></span>
+                      : <Avatar name={sc.name === '—' ? null : sc.name} size={24} />}
+                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:5 }}>
+                    <span style={{ fontSize:22, fontWeight:800, color: active ? COLOR : 'var(--text)', fontFeatureSettings:'"tnum"' }}>{sc.count}</span>
+                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>เคส</span>
+                    {sc.amt > 0 && <span style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>฿{sc.amt.toLocaleString('th-TH')}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* รายการเคสของ SC ที่เลือก — แสดงต่อจากการ์ด SC ทันที */}
+      {lastPicked === 'sc' && resultsBlock}
+
+      {/* ===== การ์ดจำนวนเคสตามผู้รับผิดชอบ (CC) — คลิกเพื่อกรอง ===== */}
+      {ccStats.length > 0 && (
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+            <Icon name="userPlus" size={15} style={{ color:'var(--text-muted)' }} />
+            <span style={{ fontSize:12.5, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.03em' }}>จำนวนเคสตามผู้รับผิดชอบ (CC)</span>
+            <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>· คลิกเพื่อกรอง</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
+            {[{ name:'all', count: baseCases.length, amt: baseCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0) }, ...ccStats].map(cc => {
+              const active = selectedCC === cc.name;
+              const isAll  = cc.name === 'all';
+              const label  = isAll ? 'ทั้งหมด' : cc.name === '—' ? 'ยังไม่มอบหมาย' : cc.name;
+              return (
+                <button key={cc.name} onClick={() => pickCC(active && !isAll ? 'all' : cc.name)} style={{
+                  textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+                  background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
+                  border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
+                  boxShadow: active ? `0 3px 12px ${hexA(COLOR,.22)}` : 'none',
+                  outline: active ? `1px solid ${hexA(COLOR,.5)}` : 'none', transition:'all .14s',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    {isAll
+                      ? <span style={{ width:24, height:24, borderRadius:7, display:'grid', placeItems:'center', background:hexA(COLOR,.14), color:COLOR }}><Icon name="layers" size={14}/></span>
+                      : <Avatar name={cc.name === '—' ? null : cc.name} size={24} />}
+                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:5 }}>
+                    <span style={{ fontSize:22, fontWeight:800, color: active ? COLOR : 'var(--text)', fontFeatureSettings:'"tnum"' }}>{cc.count}</span>
+                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>เคส</span>
+                    {cc.amt > 0 && <span style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>฿{cc.amt.toLocaleString('th-TH')}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* รายการเคสของ CC ที่เลือก หรือค่าเริ่มต้น — แสดงต่อจากการ์ด CC */}
+      {lastPicked !== 'sc' && resultsBlock}
     </div>
   );
 }
