@@ -4213,19 +4213,37 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
   const { useState: useStateDL, useMemo: useMemoDL } = React;
   const [q, setQ] = useStateDL('');
+  const [selectedSC, setSelectedSC] = useStateDL('all');
   const STATUS = window.STATUS_MAP['delay_analyze'];
   const COLOR = STATUS ? STATUS.color : '#EA580C';
   const TITLE = STATUS ? STATUS.label : 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ';
 
+  // เคสทั้งหมดในสถานะนี้ (ก่อนกรอง SC / ค้นหา)
+  const baseCases = useMemoDL(() => cases.filter(c => c.billStatus === 'delay_analyze'), [cases]);
+  const matchSC = (c, name) => name === '—' ? (!c.owner || c.owner === '—') : c.owner === name;
+
+  // รายชื่อ SC (ผู้รับผิดชอบ) ที่มีในเคสสถานะนี้ + สถิติต่อ SC
+  const scStats = useMemoDL(() => {
+    const names = new Set();
+    baseCases.forEach(c => names.add(c.owner && c.owner !== '—' ? c.owner : '—'));
+    const arr = [...names].filter(n => n !== '—').sort((a,b) => a.localeCompare(b,'th'));
+    if (baseCases.some(c => !c.owner || c.owner === '—')) arr.push('—');
+    return arr.map(name => {
+      const cs = baseCases.filter(c => matchSC(c, name));
+      const amt = cs.filter(c => c.claimAmount != null).reduce((s,c) => s + Number(c.claimAmount), 0);
+      return { name, count: cs.length, amt };
+    });
+  }, [baseCases]);
+
   const filtered = useMemoDL(() => {
-    const base = cases.filter(c => c.billStatus === 'delay_analyze');
+    let base = selectedSC === 'all' ? baseCases : baseCases.filter(c => matchSC(c, selectedSC));
     if (!q) return base;
     const lower = q.toLowerCase();
     return base.filter(c => {
       const hay = `${c.receiptNo} ${c.billNo} ${c.sender} ${c.receiver} ${c.productType} ${c.damageType} ${c.loadPoint} ${c.unloadPoint} ${c.owner} ${c.ownerCC} ${c.faultDC}`.toLowerCase();
       return hay.includes(lower);
     });
-  }, [cases, q]);
+  }, [baseCases, selectedSC, q]);
 
   const totalAmt = useMemoDL(() =>
     filtered.filter(c => c.claimAmount != null).reduce((s,c) => s + Number(c.claimAmount), 0),
@@ -4278,6 +4296,45 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
           </div>
         ))}
       </div>
+
+      {/* ===== การ์ดจำนวนเคสตามผู้รับผิดชอบ (SC) — คลิกเพื่อกรอง ===== */}
+      {scStats.length > 0 && (
+        <div>
+          <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+            <Icon name="user" size={15} style={{ color:'var(--text-muted)' }} />
+            <span style={{ fontSize:12.5, fontWeight:700, color:'var(--text-muted)', letterSpacing:'.03em' }}>จำนวนเคสตามผู้รับผิดชอบ (SC)</span>
+            <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>· คลิกเพื่อกรอง</span>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:12 }}>
+            {[{ name:'all', count: baseCases.length, amt: baseCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0) }, ...scStats].map(sc => {
+              const active = selectedSC === sc.name;
+              const isAll  = sc.name === 'all';
+              const label  = isAll ? 'ทั้งหมด' : sc.name === '—' ? 'ยังไม่มอบหมาย' : sc.name;
+              return (
+                <button key={sc.name} onClick={() => setSelectedSC(active && !isAll ? 'all' : sc.name)} style={{
+                  textAlign:'left', cursor:'pointer', fontFamily:'inherit',
+                  background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
+                  border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
+                  boxShadow: active ? `0 3px 12px ${hexA(COLOR,.22)}` : 'none',
+                  outline: active ? `1px solid ${hexA(COLOR,.5)}` : 'none', transition:'all .14s',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                    {isAll
+                      ? <span style={{ width:24, height:24, borderRadius:7, display:'grid', placeItems:'center', background:hexA(COLOR,.14), color:COLOR }}><Icon name="layers" size={14}/></span>
+                      : <Avatar name={sc.name === '—' ? null : sc.name} size={24} />}
+                    <span style={{ fontSize:13, fontWeight:600, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</span>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'baseline', gap:5 }}>
+                    <span style={{ fontSize:22, fontWeight:800, color: active ? COLOR : 'var(--text)', fontFeatureSettings:'"tnum"' }}>{sc.count}</span>
+                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>เคส</span>
+                    {sc.amt > 0 && <span style={{ marginLeft:'auto', fontSize:12, fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>฿{sc.amt.toLocaleString('th-TH')}</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="toolbar">
         <div className="search-box">
