@@ -4211,10 +4211,11 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 // หน้าเคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ
 // ===================================================================
 function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
-  const { useState: useStateDL, useMemo: useMemoDL } = React;
+  const { useState: useStateDL, useMemo: useMemoDL, useRef: useRefDL } = React;
   const [q, setQ] = useStateDL('');
   const [selectedSC, setSelectedSC] = useStateDL('all');
   const [selectedCC, setSelectedCC] = useStateDL('all');
+  const resultsRef = useRefDL(null);
   const STATUS = window.STATUS_MAP['delay_analyze'];
   const COLOR = STATUS ? STATUS.color : '#EA580C';
   const TITLE = STATUS ? STATUS.label : 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ';
@@ -4254,6 +4255,13 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
   const totalAmt = useMemoDL(() =>
     filtered.filter(c => c.claimAmount != null).reduce((s,c) => s + Number(c.claimAmount), 0),
   [filtered]);
+
+  // เลื่อนลงไปที่รายการเคสเมื่อกดการ์ด SC/CC
+  const scrollToResults = () => {
+    if (resultsRef.current) resultsRef.current.scrollIntoView({ block:'start' });
+  };
+  const pickSC = (name) => { setSelectedSC(name); if (name !== 'all') scrollToResults(); };
+  const pickCC = (name) => { setSelectedCC(name); if (name !== 'all') scrollToResults(); };
 
   const dl = window.dispLabel;
   const dc = (d) => d > 7 ? '#F87171' : d > 3 ? '#FBBF24' : '#34D399';
@@ -4317,7 +4325,7 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
               const isAll  = sc.name === 'all';
               const label  = isAll ? 'ทั้งหมด' : sc.name === '—' ? 'ยังไม่มอบหมาย' : sc.name;
               return (
-                <button key={sc.name} onClick={() => setSelectedSC(active && !isAll ? 'all' : sc.name)} style={{
+                <button key={sc.name} onClick={() => pickSC(active && !isAll ? 'all' : sc.name)} style={{
                   textAlign:'left', cursor:'pointer', fontFamily:'inherit',
                   background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
                   border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
@@ -4356,7 +4364,7 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
               const isAll  = cc.name === 'all';
               const label  = isAll ? 'ทั้งหมด' : cc.name === '—' ? 'ยังไม่มอบหมาย' : cc.name;
               return (
-                <button key={cc.name} onClick={() => setSelectedCC(active && !isAll ? 'all' : cc.name)} style={{
+                <button key={cc.name} onClick={() => pickCC(active && !isAll ? 'all' : cc.name)} style={{
                   textAlign:'left', cursor:'pointer', fontFamily:'inherit',
                   background:'var(--surface-2)', borderRadius:'var(--radius-card)', padding:'14px 16px',
                   border:'1px solid var(--border)', borderLeft:`4px solid ${active ? COLOR : 'var(--border)'}`,
@@ -4381,12 +4389,29 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
         </div>
       )}
 
-      <div className="toolbar">
+      <div className="toolbar" ref={resultsRef} style={{ scrollMarginTop:12 }}>
         <div className="search-box">
           <Icon name="search" size={17} style={{ color:'var(--text-muted)', flexShrink:0 }} />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาเลขรับบิล, เลขบิล, บริษัท, สินค้า, DC..." />
           {q && <button onClick={() => setQ('')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', display:'grid', placeItems:'center' }}><Icon name="close" size={15} /></button>}
         </div>
+        {(selectedSC !== 'all' || selectedCC !== 'all') && (
+          <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+            <span style={{ fontSize:12, color:'var(--text-muted)' }}>แสดงเคสของ:</span>
+            {selectedSC !== 'all' && (
+              <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:600, color:COLOR, background:hexA(COLOR,.1), padding:'4px 10px', borderRadius:99 }}>
+                SC · {selectedSC === '—' ? 'ยังไม่มอบหมาย' : selectedSC}
+                <button onClick={() => setSelectedSC('all')} title="ล้างตัวกรอง SC" style={{ background:'none', border:'none', color:COLOR, cursor:'pointer', display:'grid', placeItems:'center', padding:0 }}><Icon name="close" size={13} /></button>
+              </span>
+            )}
+            {selectedCC !== 'all' && (
+              <span style={{ display:'inline-flex', alignItems:'center', gap:5, fontSize:12, fontWeight:600, color:COLOR, background:hexA(COLOR,.1), padding:'4px 10px', borderRadius:99 }}>
+                CC · {selectedCC === '—' ? 'ยังไม่มอบหมาย' : selectedCC}
+                <button onClick={() => setSelectedCC('all')} title="ล้างตัวกรอง CC" style={{ background:'none', border:'none', color:COLOR, cursor:'pointer', display:'grid', placeItems:'center', padding:0 }}><Icon name="close" size={13} /></button>
+              </span>
+            )}
+          </div>
+        )}
         <div style={{ marginLeft:'auto', fontSize:13, color:'var(--text-muted)' }}>
           พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
         </div>
