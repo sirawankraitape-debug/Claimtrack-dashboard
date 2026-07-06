@@ -2678,6 +2678,7 @@ function App() {
     ['considerco', 'layers', 'เคสขอพิจารณาลงบริษัท'],
     ['cpfcases', 'box', 'เคส CPF'],
     ['fraudcases', 'alert', 'เคสทุจริต'],
+    ['delaycases', 'clock', 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ'],
     ['upload', 'upload', 'นำเข้าข้อมูล'],
     ['report', 'report', 'รายงาน'],
     ['settings', 'settings', 'ตั้งค่า']];
@@ -2778,6 +2779,7 @@ function App() {
           {route === 'considerco' && <ErrorBoundary key="considerco"><ConsiderCoView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onSetConsiderCoResult={setConsiderCoResult} /></ErrorBoundary>}
           {route === 'cpfcases' && <ErrorBoundary key="cpfcases"><CpfCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'fraudcases' && <ErrorBoundary key="fraudcases"><FraudCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
+          {route === 'delaycases' && <ErrorBoundary key="delaycases"><DelayCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'report' && <DurationReport cases={displayCases} onExport={() => exportCases(null)} />}
           {route === 'settings' && <StatusSettings cases={cases} statuses={statuses} onAddStatus={openAddStatus} onDeleteStatus={deleteStatus} onBackup={backupDB} onRestore={restoreDB} onReset={resetDB} onDeleteByDate={deleteByDocDate} dbStats={dbStats} />}
         </main>
@@ -4198,6 +4200,175 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
             <span style={{ width:54, height:54, borderRadius:14, display:'grid', placeItems:'center', background:'var(--surface-2)', marginBottom:14 }}><Icon name="alert" size={26}/></span>
             <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>ไม่มีเคสทุจริตในขณะนี้</div>
             <div style={{ fontSize:13, marginTop:5 }}>เคสจะปรากฏที่นี่เมื่อมีการเปลี่ยนสถานะเป็น "เคสทุจริต"</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===================================================================
+// หน้าเคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ
+// ===================================================================
+function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
+  const { useState: useStateDL, useMemo: useMemoDL } = React;
+  const [q, setQ] = useStateDL('');
+  const STATUS = window.STATUS_MAP['delay_analyze'];
+  const COLOR = STATUS ? STATUS.color : '#EA580C';
+  const TITLE = STATUS ? STATUS.label : 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ';
+
+  const filtered = useMemoDL(() => {
+    const base = cases.filter(c => c.billStatus === 'delay_analyze');
+    if (!q) return base;
+    const lower = q.toLowerCase();
+    return base.filter(c => {
+      const hay = `${c.receiptNo} ${c.billNo} ${c.sender} ${c.receiver} ${c.productType} ${c.damageType} ${c.loadPoint} ${c.unloadPoint} ${c.owner} ${c.ownerCC} ${c.faultDC}`.toLowerCase();
+      return hay.includes(lower);
+    });
+  }, [cases, q]);
+
+  const totalAmt = useMemoDL(() =>
+    filtered.filter(c => c.claimAmount != null).reduce((s,c) => s + Number(c.claimAmount), 0),
+  [filtered]);
+
+  const dl = window.dispLabel;
+  const dc = (d) => d > 7 ? '#F87171' : d > 3 ? '#FBBF24' : '#34D399';
+
+  const getDaysInStatus = (c) => {
+    const evs = [...(c.events||[])].sort((a,b) => new Date(a.at)-new Date(b.at));
+    let entryDate = null;
+    evs.forEach(e => {
+      if (e.type === 'status') {
+        const m = e.text && e.text.match(/"([^"]+)"/);
+        if (m) {
+          const found = window.STATUSES.find(s => s.label === m[1]);
+          if (found && found.key === 'delay_analyze') entryDate = new Date(e.at);
+        }
+      }
+    });
+    if (!entryDate && c.billStatus === 'delay_analyze') {
+      const evs2 = [...(c.events||[])].sort((a,b) => new Date(a.at)-new Date(b.at));
+      entryDate = evs2[0] ? new Date(evs2[0].at) : null;
+    }
+    return entryDate ? Math.max(0, Math.round((new Date() - entryDate) / 86400000)) : null;
+  };
+
+  return (
+    <div className="page-pad" style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', flexWrap:'wrap', gap:14 }}>
+        <div>
+          <div style={{ fontSize:13, color: COLOR, fontWeight:600, letterSpacing:'.04em' }}>สถานะพิเศษ</div>
+          <h1 style={{ fontFamily:'var(--font-display)', fontSize:26, fontWeight:700, margin:'4px 0 0', letterSpacing:'-0.02em', color: COLOR }}>{TITLE}</h1>
+          <div style={{ fontSize:13.5, color:'var(--text-muted)', marginTop:4 }}>เคสที่อยู่ในสถานะ “{TITLE}”</div>
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:14 }}>
+        {[
+          { label:'เคสทั้งหมด', value: filtered.length,                                          icon:'clock', color: COLOR    },
+          { label:'มูลค่ารวม',  value: totalAmt > 0 ? '฿'+totalAmt.toLocaleString('th-TH'):'—',  icon:'note',  color:'#34D399' },
+        ].map(({ label, value, icon, color }) => (
+          <div key={label} className="stat-card" style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--radius-card)', padding:'16px 18px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', inset:0, background:`radial-gradient(120% 120% at 100% 0%, ${hexA(color,.1)}, transparent 55%)`, pointerEvents:'none' }}></div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
+              <div style={{ fontSize:12.5, color:'var(--text-muted)', fontWeight:500 }}>{label}</div>
+              <span style={{ width:30, height:30, borderRadius:9, display:'grid', placeItems:'center', color, background:hexA(color,.12) }}><Icon name={icon} size={16} /></span>
+            </div>
+            <div style={{ fontSize:24, fontWeight:800, color:'var(--text)', marginTop:8, position:'relative', fontFeatureSettings:'"tnum"', letterSpacing:'-0.02em' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="toolbar">
+        <div className="search-box">
+          <Icon name="search" size={17} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาเลขรับบิล, เลขบิล, บริษัท, สินค้า, DC..." />
+          {q && <button onClick={() => setQ('')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', display:'grid', placeItems:'center' }}><Icon name="close" size={15} /></button>}
+        </div>
+        <div style={{ marginLeft:'auto', fontSize:13, color:'var(--text-muted)' }}>
+          พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+        </div>
+      </div>
+
+      <div className="table-wrap">
+        <table className="ctable">
+          <thead>
+            <tr>
+              <th>เลขที่รับบิล / เลขที่บิล</th>
+              <th>ความเสียหาย</th>
+              <th>ผู้ส่ง → ผู้รับ</th>
+              <th>สินค้า</th>
+              <th>เส้นทาง (จุดขึ้น → จุดลง)</th>
+              <th>วันที่เอกสาร</th>
+              <th>SC</th>
+              <th>CC</th>
+              <th style={{textAlign:'center',color:'#FBBF24'}}>ค้างในสถานะ</th>
+              <th style={{textAlign:'right'}}>มูลค่ายืนยันเคลม</th>
+              <th>DC/หน่วยงาน ที่เสียหาย</th>
+              <th style={{textAlign:'right'}}>จัดการ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(c => {
+              const days = getDaysInStatus(c);
+              return (
+                <tr key={c.id} onClick={() => onOpenCase(c)} className="crow">
+                  <td>
+                    <div style={{ fontWeight:700, fontSize:13.5, fontFeatureSettings:'"tnum"' }}>{c.receiptNo}</div>
+                    <div style={{ fontSize:11.5, color:'var(--text-muted)', fontFeatureSettings:'"tnum"' }}>{c.billNo||'—'}</div>
+                    {!c.confirmed && (
+                      <span style={{ fontSize:10.5, fontWeight:700, color:'#F59E0B', background:hexA('#F59E0B',.12), padding:'1px 6px', borderRadius:99, marginTop:3, display:'inline-block' }}>รอยืนยัน</span>
+                    )}
+                  </td>
+                  <td><span style={{ fontSize:13, color:'var(--text-2)' }}>{dl(c.damageType)}</span></td>
+                  <td>
+                    <div style={{ fontSize:13, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:160 }}>{c.sender}</div>
+                    <div style={{ fontSize:11.5, color:'var(--text-muted)', display:'flex', alignItems:'center', gap:4, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:160 }}><Icon name="arrowRight" size={11}/>{c.receiver}</div>
+                  </td>
+                  <td><span style={{ fontSize:13 }}>{c.productType||'—'}</span></td>
+                  <td><span style={{ fontSize:12.5, color:'var(--text-2)', whiteSpace:'nowrap' }}>{dl(c.loadPoint)} → {dl(c.unloadPoint)}</span></td>
+                  <td><span style={{ fontSize:12.5, color:'var(--text-2)', whiteSpace:'nowrap' }}>{c.docDate}</span></td>
+                  <td>
+                    {c.owner==='—'||!c.owner
+                      ? <span style={{ fontSize:12, color:'var(--text-muted)' }}>—</span>
+                      : <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5 }}><Avatar name={c.owner} size={22}/>{c.owner}</span>}
+                  </td>
+                  <td>
+                    {!c.ownerCC||c.ownerCC==='—'
+                      ? <span style={{ fontSize:12, color:'var(--text-muted)' }}>—</span>
+                      : <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12.5 }}><Avatar name={c.ownerCC} size={22}/>{c.ownerCC}</span>}
+                  </td>
+                  <td style={{ textAlign:'center' }}>
+                    {days != null
+                      ? <><span style={{ fontWeight:800, fontSize:15, color:dc(days), fontFeatureSettings:'"tnum"' }}>{days}</span><span style={{ fontSize:10.5, color:'var(--text-muted)', marginLeft:3 }}>วัน</span></>
+                      : <span style={{ color:'var(--text-muted)' }}>—</span>}
+                  </td>
+                  <td style={{ textAlign:'right' }}>
+                    {c.claimAmount != null
+                      ? <span style={{ fontWeight:700, fontSize:13.5, fontFeatureSettings:'"tnum"', color:'#34D399' }}>฿{Number(c.claimAmount).toLocaleString('th-TH')}</span>
+                      : <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>—</span>}
+                  </td>
+                  <td>
+                    {c.faultDC
+                      ? <span style={{ fontSize:12.5, fontWeight:500, color:'var(--text-2)', display:'inline-flex', alignItems:'center', gap:5 }}><Icon name="truck" size={13} style={{ color:'var(--accent-2)', flexShrink:0 }}/>{c.faultDC}</span>
+                      : <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>—</span>}
+                  </td>
+                  <td style={{ textAlign:'right' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
+                      {!c.confirmed && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
+                      <StatusActionMenu c={c} onSetStatus={onSetStatus} onConfirm={onConfirm} onAddStatus={onAddStatus} />
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filtered.length === 0 && (
+          <div style={{ display:'grid', placeItems:'center', padding:'70px 20px', textAlign:'center', color:'var(--text-muted)' }}>
+            <span style={{ width:54, height:54, borderRadius:14, display:'grid', placeItems:'center', background:'var(--surface-2)', marginBottom:14 }}><Icon name="clock" size={26}/></span>
+            <div style={{ fontSize:15, fontWeight:600, color:'var(--text-2)' }}>ไม่มีเคสในสถานะนี้ในขณะนี้</div>
+            <div style={{ fontSize:13, marginTop:5 }}>เคสจะปรากฏที่นี่เมื่อมีการเปลี่ยนสถานะเป็น “{TITLE}”</div>
           </div>
         )}
       </div>
