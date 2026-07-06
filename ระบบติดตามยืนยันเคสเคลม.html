@@ -261,6 +261,7 @@ const DEFAULT_STATUSES = [
   { key: 'find_owner',   label: 'อยู่ระหว่างขอรายชื่อผู้รับผิดชอบ',  color: '#F59E0B', group: 'ดำเนินการ' },
   { key: 'sent_owner',   label: 'ส่งเอกสารให้ผู้รับผิดชอบ',          color: '#8B5CF6', group: 'ดำเนินการ' },
   { key: 'received',     label: 'ได้รับเอกสารแล้ว',                 color: '#3B82F6', group: 'ดำเนินการ' },
+  { key: 'delay_analyze',label: 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ', color: '#EA580C', group: 'ดำเนินการ' },
   { key: 'consider_co', label: 'ขอพิจารณาลงบริษัท',                color: '#EC4899', group: 'ดำเนินการ' },
   { key: 'CPF',         label: 'เคส CPF',                            color: '#EAB308', group: 'ดำเนินการ' },
   { key: 'fraud',        label: 'เคสทุจริต',                         color: '#4B5563', group: 'ดำเนินการ', terminal: true },
@@ -2472,6 +2473,23 @@ function App() {
   };
   const openAddStatus = () => setShowAddStatus(true);
 
+  // ลบสถานะ — ได้เฉพาะสถานะที่เพิ่มเอง (กลุ่ม "กำหนดเอง")
+  const deleteStatus = (s) => {
+    if (s.group !== 'กำหนดเอง') { showToast('ลบได้เฉพาะสถานะที่เพิ่มเอง (กลุ่ม “กำหนดเอง”)', 'error'); return; }
+    const used = cases.filter(c => c.billStatus === s.key).length;
+    const warn = used ? `\n\nมี ${used} เคสที่ใช้สถานะนี้อยู่ — เคสเหล่านั้นจะไม่มีสถานะที่ตรงกัน` : '';
+    if (!window.confirm(`ต้องการลบสถานะ “${s.label}” ?${warn}`)) return;
+    if (IS_SERVER) {
+      fetch('/api/statuses/' + encodeURIComponent(s.key), { method:'DELETE' })
+        .then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || ''); return d; }))
+        .then(() => { setStatuses(prev => prev.filter(x => x.key !== s.key)); showToast(`ลบสถานะ “${s.label}” แล้ว`); })
+        .catch(err => showToast(err.message || 'ลบสถานะไม่สำเร็จ', 'error'));
+      return;
+    }
+    setStatuses(prev => prev.filter(x => x.key !== s.key));
+    showToast(`ลบสถานะ “${s.label}” แล้ว`);
+  };
+
   // ===== สำรอง / กู้คืน / ล้างข้อมูล =====
   const backupDB = () => {
     if (IS_SERVER) { window.location.href = '/api/backup'; return; }
@@ -2761,7 +2779,7 @@ function App() {
           {route === 'cpfcases' && <ErrorBoundary key="cpfcases"><CpfCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'fraudcases' && <ErrorBoundary key="fraudcases"><FraudCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'report' && <DurationReport cases={displayCases} onExport={() => exportCases(null)} />}
-          {route === 'settings' && <StatusSettings cases={cases} statuses={statuses} onAddStatus={openAddStatus} onBackup={backupDB} onRestore={restoreDB} onReset={resetDB} onDeleteByDate={deleteByDocDate} dbStats={dbStats} />}
+          {route === 'settings' && <StatusSettings cases={cases} statuses={statuses} onAddStatus={openAddStatus} onDeleteStatus={deleteStatus} onBackup={backupDB} onRestore={restoreDB} onReset={resetDB} onDeleteByDate={deleteByDocDate} dbStats={dbStats} />}
         </main>
       </div>
 
@@ -4188,7 +4206,7 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 }
 
 // ===== หน้าตั้งค่า: ฐานข้อมูล + จัดการสถานะ =====
-function StatusSettings({ cases, statuses, onAddStatus, onBackup, onRestore, onReset, onDeleteByDate, dbStats }) {
+function StatusSettings({ cases, statuses, onAddStatus, onDeleteStatus, onBackup, onRestore, onReset, onDeleteByDate, dbStats }) {
   const sum = window.summarize(cases);
   const groups = window.groupedStatuses();
   const isServer = !!dbStats.isServer;
@@ -4339,6 +4357,15 @@ function StatusSettings({ cases, statuses, onAddStatus, onBackup, onRestore, onR
                 <span style={{ flex:1, fontSize:13.5, color:'var(--text)' }}>{s.label}</span>
                 {s.terminal && <span style={{ fontSize:11, color:'var(--text-muted)', background:'var(--surface-3)', padding:'2px 8px', borderRadius:99 }}>ปิด/เสร็จสิ้น</span>}
                 <span style={{ fontSize:12.5, fontWeight:700, color:(sum.byStatus[s.key]||0)?'var(--text)':'var(--text-muted)', fontFeatureSettings:'"tnum"', minWidth:54, textAlign:'right' }}>{(sum.byStatus[s.key]||0).toLocaleString('th-TH')} เคส</span>
+                {s.group === 'กำหนดเอง' && onDeleteStatus && (
+                  <button
+                    onClick={() => onDeleteStatus(s)}
+                    title="ลบสถานะ"
+                    style={{ display:'grid', placeItems:'center', width:28, height:28, border:'none', borderRadius:6, background:'transparent', color:'var(--text-muted)', cursor:'pointer', flexShrink:0 }}
+                    onMouseEnter={e => { e.currentTarget.style.background = window.hexA('#EF4444',.14); e.currentTarget.style.color = '#EF4444'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                  ><Icon name="trash" size={15} /></button>
+                )}
               </div>
             ))}
           </div>

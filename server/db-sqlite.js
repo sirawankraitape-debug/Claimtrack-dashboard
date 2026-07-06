@@ -20,16 +20,17 @@ const DEFAULT_STATUSES = [
   { key:'find_owner',    label:'อยู่ระหว่างขอรายชื่อผู้รับผิดชอบ',   color:'#F59E0B', grp:'ดำเนินการ',    terminal:0, sort_order:3  },
   { key:'sent_owner',    label:'ส่งเอกสารให้ผู้รับผิดชอบ',           color:'#8B5CF6', grp:'ดำเนินการ',    terminal:0, sort_order:4  },
   { key:'received',      label:'ได้รับเอกสารแล้ว',                   color:'#3B82F6', grp:'ดำเนินการ',    terminal:0, sort_order:5  },
-  { key:'consider_co',   label:'ขอพิจารณาลงบริษัท',                 color:'#EC4899', grp:'ดำเนินการ',    terminal:0, sort_order:6  },
-  { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:0, sort_order:7  },
-  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:8  },
-  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:9  },
-  { key:'A00', label:'A00 อยู่ระหว่างการพิจารณา',                   color:'#38BDF8', grp:'สถานะเคลม',    terminal:0, sort_order:10 },
-  { key:'A01', label:'A01 อยู่ระหว่างการส่งเอกสารประกอบการเคลม',    color:'#818CF8', grp:'สถานะเคลม',    terminal:0, sort_order:11 },
-  { key:'A02', label:'A02 อยู่ระหว่างการตรวจสอบเอกสาร',             color:'#A78BFA', grp:'สถานะเคลม',    terminal:0, sort_order:12 },
-  { key:'A03', label:'A03 อยู่ระหว่างการโอนเงิน',                   color:'#F472B6', grp:'สถานะเคลม',    terminal:0, sort_order:13 },
-  { key:'A04', label:'A04 โอนเงิน',                                color:'#34D399', grp:'สถานะเคลม',    terminal:1, sort_order:14 },
-  { key:'A89', label:'A89 ปิดจบ ไม่เคลม',                          color:'#94A3B8', grp:'สถานะเคลม',    terminal:1, sort_order:15 },
+  { key:'delay_analyze', label:'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ', color:'#EA580C', grp:'ดำเนินการ', terminal:0, sort_order:6  },
+  { key:'consider_co',   label:'ขอพิจารณาลงบริษัท',                 color:'#EC4899', grp:'ดำเนินการ',    terminal:0, sort_order:7  },
+  { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:0, sort_order:8  },
+  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:9  },
+  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:10 },
+  { key:'A00', label:'A00 อยู่ระหว่างการพิจารณา',                   color:'#38BDF8', grp:'สถานะเคลม',    terminal:0, sort_order:11 },
+  { key:'A01', label:'A01 อยู่ระหว่างการส่งเอกสารประกอบการเคลม',    color:'#818CF8', grp:'สถานะเคลม',    terminal:0, sort_order:12 },
+  { key:'A02', label:'A02 อยู่ระหว่างการตรวจสอบเอกสาร',             color:'#A78BFA', grp:'สถานะเคลม',    terminal:0, sort_order:13 },
+  { key:'A03', label:'A03 อยู่ระหว่างการโอนเงิน',                   color:'#F472B6', grp:'สถานะเคลม',    terminal:0, sort_order:14 },
+  { key:'A04', label:'A04 โอนเงิน',                                color:'#34D399', grp:'สถานะเคลม',    terminal:1, sort_order:15 },
+  { key:'A89', label:'A89 ปิดจบ ไม่เคลม',                          color:'#94A3B8', grp:'สถานะเคลม',    terminal:1, sort_order:16 },
   { key:'B00', label:'B00 อยู่ระหว่างการประเมินผู้รับผิดชอบ',       color:'#FBBF24', grp:'สถานะเคลียร์', terminal:0, sort_order:20 },
   { key:'B01', label:'B01 อยู่ระหว่างการตอบกลับของ DC',            color:'#FB923C', grp:'สถานะเคลียร์', terminal:0, sort_order:21 },
   { key:'B02', label:'B02 อยู่ระหว่างการอนุมัติของผู้บริหาร',       color:'#F59E0B', grp:'สถานะเคลียร์', terminal:0, sort_order:22 },
@@ -108,16 +109,15 @@ const init = async () => {
     for (const [u, p, d, r] of seedUsers) insUser.run(u, p, d, r);
   }
 
-  // Seed statuses ถ้ายังไม่มี
-  const count = db.prepare('SELECT COUNT(*) AS n FROM statuses').get().n;
-  if (count === 0) {
-    const ins = db.prepare(
-      `INSERT OR IGNORE INTO statuses (key,label,color,grp,terminal,sort_order)
-       VALUES (@key,@label,@color,@grp,@terminal,@sort_order)`
-    );
-    const seedAll = db.transaction((list) => list.forEach(s => ins.run(s)));
-    seedAll(DEFAULT_STATUSES);
-  }
+  // Upsert default statuses ทุกครั้งที่ start — เพิ่มสถานะใหม่ + sync sort_order
+  // (ไม่แตะสถานะกลุ่ม "กำหนดเอง" ที่ผู้ใช้เพิ่มเอง)
+  const ins = db.prepare(
+    `INSERT INTO statuses (key,label,color,grp,terminal,sort_order)
+     VALUES (@key,@label,@color,@grp,@terminal,@sort_order)
+     ON CONFLICT(key) DO UPDATE SET sort_order = excluded.sort_order`
+  );
+  const seedAll = db.transaction((list) => list.forEach(s => ins.run(s)));
+  seedAll(DEFAULT_STATUSES);
 
   // ล้าง status เคสที่ยังไม่ยืนยัน (migration สำหรับข้อมูลเก่า)
   db.prepare('UPDATE cases SET bill_status = NULL WHERE confirmed = 0 AND bill_status IS NOT NULL').run();
