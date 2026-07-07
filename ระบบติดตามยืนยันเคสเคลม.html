@@ -2846,7 +2846,7 @@ function SCPersonCards({ scCases, onOpenCase }) {
   const [expandKey, setExpandKey] = usePCS(null);
   const dc = (d) => d > 7 ? '#F87171' : d > 3 ? '#FBBF24' : '#34D399';
   const confirmedCases = scCases.filter(c => c.confirmed);
-  const unconfirmedGrp = scCases.filter(c => !c.confirmed);
+  const unconfirmedGrp = scCases.filter(c => needsConfirm(c));
 
   const detailCards = SC_DETAIL.map(key => {
     const s = window.STATUS_MAP[key]; if (!s) return null;
@@ -3250,7 +3250,7 @@ function SCDashboard({ cases, onOpenCase, onSetStatus, onConfirm }) {
               .filter(c => !SC_HIDDEN.has(c.billStatus));
             if (!scCases.length) return null;
             const totalAmt = scCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0);
-            const unconfirmed = scCases.filter(c=>!c.confirmed).length;
+            const unconfirmed = scCases.filter(c=>needsConfirm(c)).length;
             return (
               <div key={name}>
                 {/* หัว SC คนนี้ */}
@@ -3289,7 +3289,7 @@ function CCPersonCards({ ccCases, onOpenCase }) {
   const dc = (d) => d > 7 ? '#F87171' : d > 3 ? '#FBBF24' : '#34D399';
 
   const confirmedCases = ccCases.filter(c => c.confirmed);
-  const unconfirmedGrp = ccCases.filter(c => !c.confirmed);
+  const unconfirmedGrp = ccCases.filter(c => needsConfirm(c));
 
   const detailCards = CC_DETAIL.map(key => {
     const s = window.STATUS_MAP[key]; if (!s) return null;
@@ -3648,9 +3648,10 @@ function CCDashboard({ cases, onOpenCase, onSetStatus, onConfirm }) {
           {displayList.map(name => {
             const ccCases = filteredCases
               .filter(c => name === '—' ? (!c.ownerCC || c.ownerCC === '—') : c.ownerCC === name)
-              .filter(c => CC_SHOWN_KEYS.has(c.billStatus) || !c.confirmed);
+              .filter(c => CC_SHOWN_KEYS.has(c.billStatus) || needsConfirm(c));
             if (!ccCases.length) return null;
             const totalAmt = ccCases.filter(c=>c.claimAmount!=null).reduce((s,c)=>s+Number(c.claimAmount),0);
+            const unconfirmed = ccCases.filter(c=>needsConfirm(c)).length;
             return (
               <div key={name}>
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12, paddingBottom:12, borderBottom:'2px solid var(--accent)', width:'fit-content', minWidth:240 }}>
@@ -3659,6 +3660,7 @@ function CCDashboard({ cases, onOpenCase, onSetStatus, onConfirm }) {
                     <div style={{ fontSize:17, fontWeight:800, color:'var(--text)' }}>{name==='—'?'ยังไม่มอบหมาย':name}</div>
                     <div style={{ fontSize:12.5, color:'var(--text-muted)', marginTop:2, display:'flex', gap:12 }}>
                       <span>{ccCases.length} เคสดำเนินการ</span>
+                      {unconfirmed>0 && <span style={{ color:'#FBBF24', fontWeight:600 }}>รอยืนยัน {unconfirmed}</span>}
                       {totalAmt>0 && <span style={{ color:'#34D399', fontWeight:600 }}>฿{totalAmt.toLocaleString('th-TH')}</span>}
                     </div>
                   </div>
