@@ -2791,9 +2791,9 @@ function App() {
           {route === 'cases' && <ErrorBoundary key={'cases-' + (casesFilter || 'all')}><CasesView cases={displayCases} view={view} setView={setView} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onUpload={() => setShowUpload(true)} onExport={() => exportCases(null)} initialFilter={casesFilter} key={casesFilter || 'all'} /></ErrorBoundary>}
           {route === 'sc' && <SCDashboard cases={displayCases} onOpenCase={setOpenCase} onSetStatus={setStatus} onConfirm={confirmCase} />}
           {route === 'cc' && <CCDashboard cases={displayCases} onOpenCase={setOpenCase} onSetStatus={setStatus} onConfirm={confirmCase} />}
-          {route === 'considerco' && <ErrorBoundary key="considerco"><ConsiderCoView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onSetConsiderCoResult={setConsiderCoResult} /></ErrorBoundary>}
-          {route === 'cpfcases' && <ErrorBoundary key="cpfcases"><CpfCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
-          {route === 'fraudcases' && <ErrorBoundary key="fraudcases"><FraudCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
+          {route === 'considerco' && <ErrorBoundary key="considerco"><ConsiderCoView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onSetConsiderCoResult={setConsiderCoResult} onExport={exportCases} /></ErrorBoundary>}
+          {route === 'cpfcases' && <ErrorBoundary key="cpfcases"><CpfCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
+          {route === 'fraudcases' && <ErrorBoundary key="fraudcases"><FraudCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
           {route === 'delaycases' && <ErrorBoundary key="delaycases"><DelayCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'nodrivencases' && <ErrorBoundary key="nodrivencases"><DelayCasesView statusKey="no_driven" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'report' && <DurationReport cases={displayCases} onExport={() => exportCases(null)} />}
@@ -3678,7 +3678,7 @@ function CCDashboard({ cases, onOpenCase, onSetStatus, onConfirm }) {
 // ===================================================================
 // หน้าเคสขอพิจารณาลงบริษัท (consider_co)
 // ===================================================================
-function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, onSetConsiderCoResult }) {
+function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, onSetConsiderCoResult, onExport }) {
   const { useState: useStateCC2, useMemo: useMemoCC2 } = React;
   const [q, setQ] = useStateCC2('');
   const STATUS = window.STATUS_MAP['consider_co'];
@@ -3768,8 +3768,11 @@ function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาเลขรับบิล, เลขบิล, บริษัท, สินค้า, DC..." />
           {q && <button onClick={() => setQ('')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', display:'grid', placeItems:'center' }}><Icon name="close" size={15} /></button>}
         </div>
-        <div style={{ marginLeft:'auto', fontSize:13, color:'var(--text-muted)' }}>
-          พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:12 }}>
+          {onExport && <Btn variant="ghost" icon="download" size="md" onClick={() => onExport(filtered)}>ส่งออก</Btn>}
+          <span style={{ fontSize:13, color:'var(--text-muted)' }}>
+            พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+          </span>
         </div>
       </div>
 
@@ -3886,7 +3889,7 @@ function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 // ===================================================================
 // หน้าเคส CPF
 // ===================================================================
-function CpfCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
+function CpfCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, onExport }) {
   const { useState: useStateCPF, useMemo: useMemoeCPF } = React;
   const [q, setQ] = useStateCPF('');
   const STATUS = window.STATUS_MAP['CPF'];
@@ -3965,8 +3968,11 @@ function CpfCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาเลขรับบิล, เลขบิล, บริษัท, สินค้า, DC..." />
           {q && <button onClick={() => setQ('')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', display:'grid', placeItems:'center' }}><Icon name="close" size={15} /></button>}
         </div>
-        <div style={{ marginLeft:'auto', fontSize:13, color:'var(--text-muted)' }}>
-          พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:12 }}>
+          {onExport && <Btn variant="ghost" icon="download" size="md" onClick={() => onExport(filtered)}>ส่งออก</Btn>}
+          <span style={{ fontSize:13, color:'var(--text-muted)' }}>
+            พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+          </span>
         </div>
       </div>
 
@@ -4060,7 +4066,7 @@ function CpfCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }
 // ===================================================================
 // หน้าเคสทุจริต
 // ===================================================================
-function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
+function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, onExport }) {
   const { useState: useStateFR, useMemo: useMemoFR } = React;
   const [q, setQ] = useStateFR('');
   const STATUS = window.STATUS_MAP['fraud'];
@@ -4134,8 +4140,11 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหาเลขรับบิล, เลขบิล, บริษัท, สินค้า, DC..." />
           {q && <button onClick={() => setQ('')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', display:'grid', placeItems:'center' }}><Icon name="close" size={15} /></button>}
         </div>
-        <div style={{ marginLeft:'auto', fontSize:13, color:'var(--text-muted)' }}>
-          พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:12 }}>
+          {onExport && <Btn variant="ghost" icon="download" size="md" onClick={() => onExport(filtered)}>ส่งออก</Btn>}
+          <span style={{ fontSize:13, color:'var(--text-muted)' }}>
+            พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+          </span>
         </div>
       </div>
 
@@ -4228,7 +4237,7 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 // ===================================================================
 // หน้าเคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ
 // ===================================================================
-function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, statusKey = 'delay_analyze' }) {
+function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, statusKey = 'delay_analyze', onExport }) {
   const { useState: useStateDL, useMemo: useMemoDL } = React;
   const [q, setQ] = useStateDL('');
   const [selectedSC, setSelectedSC] = useStateDL('all');
@@ -4326,8 +4335,11 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
             )}
           </div>
         )}
-        <div style={{ marginLeft:'auto', fontSize:13, color:'var(--text-muted)' }}>
-          พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+        <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:12 }}>
+          {onExport && <Btn variant="ghost" icon="download" size="md" onClick={() => onExport(filtered)}>ส่งออก</Btn>}
+          <span style={{ fontSize:13, color:'var(--text-muted)' }}>
+            พบ <b style={{ color:'var(--text)' }}>{filtered.length}</b> เคส
+          </span>
         </div>
       </div>
 
