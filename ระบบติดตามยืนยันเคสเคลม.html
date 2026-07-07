@@ -1600,7 +1600,7 @@ Object.assign(window, { CasesView, StatusActionMenu });
 const { useState: useStateD } = React;
 const dlD = window.dispLabel;
 
-function CaseDrawer({ caseData, onClose, onAction, onConfirm }) {
+function CaseDrawer({ caseData, onClose, onAction, onConfirm, onUnconfirm }) {
   const [tab, setTab] = useStateD('detail');
   if (!caseData) return null;
   const c = caseData;
@@ -1689,6 +1689,7 @@ function CaseDrawer({ caseData, onClose, onAction, onConfirm }) {
 
         <div className="drawer-actions">
           {!c.confirmed && <Btn variant="primary" full icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับเคสเข้าระบบ</Btn>}
+          {c.confirmed && onUnconfirm && <Btn variant="ghost" full icon="close" onClick={()=>onUnconfirm(c)}>ยกเลิกการยืนยันรับ</Btn>}
           <Btn variant="solid" full icon="refresh" onClick={()=>onAction('status', c)}>เปลี่ยนสถานะ / ระบุสถานะ</Btn>
           {c.billStatus === 'consider_co' && (() => {
             const rMap = { approved:'อนุมัติ', rejected:'ไม่อนุมัติ' };
@@ -2425,6 +2426,11 @@ function App() {
   };
 
   const confirmCase = (c) => { update(c.id, { confirmed: true }, 'ยืนยันรับเคสเข้าระบบ', 'confirm'); showToast(`ยืนยันรับเคส ${c.receiptNo} เรียบร้อย`); };
+  const unconfirmCase = (c) => {
+    if (!window.confirm(`ยกเลิกการยืนยันรับเคส ${c.receiptNo}?\nเคสจะกลับไปสถานะ “รอยืนยันรับ”`)) return;
+    update(c.id, { confirmed: false }, 'ยกเลิกการยืนยันรับเคส', 'unconfirm');
+    showToast(`ยกเลิกการยืนยันเคส ${c.receiptNo} แล้ว`);
+  };
 
   const setStatus = (c, key, date = null) => {
     if (c.billStatus === key) return;
@@ -2788,7 +2794,7 @@ function App() {
         </main>
       </div>
 
-      {openCase && <CaseDrawer caseData={openCase} onClose={() => setOpenCase(null)} onAction={onDrawerAction} onConfirm={confirmCase} />}
+      {openCase && <CaseDrawer caseData={openCase} onClose={() => setOpenCase(null)} onAction={onDrawerAction} onConfirm={confirmCase} onUnconfirm={unconfirmCase} />}
       {action && <ActionModal action={action.type} caseData={action.case} onClose={() => setAction(null)} onSubmit={submitAction} onAddStatus={openAddStatus} />}
       {showUpload && <UploadModal onClose={() => setShowUpload(false)} onImport={handleImport} />}
       {showAddStatus && <AddStatusModal onClose={() => setShowAddStatus(false)} onAdd={addStatus} />}
