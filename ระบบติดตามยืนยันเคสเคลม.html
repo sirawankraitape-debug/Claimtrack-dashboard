@@ -808,6 +808,9 @@ function Avatar({ name, size = 30 }) {
   );
 }
 
+// แสดงปุ่ม "ยืนยันรับ" เมื่อยังไม่ยืนยัน หรือเคสอยู่ในสถานะ "ไม่มีใน Drive N"
+function needsConfirm(c) { return !c.confirmed || c.billStatus === 'no_driven'; }
+
 function Btn({ children, variant = 'ghost', size = 'md', icon, onClick, style, title, disabled, full }) {
   const sizes = { sm: ['7px 12px', 13], md: ['9px 16px', 14], lg: ['12px 22px', 15] };
   const [pad, fs] = sizes[size];
@@ -1396,7 +1399,7 @@ function StatusActionMenu({ c, onSetStatus, onConfirm, onAddStatus }) {
         <>
           <div style={{ position:'fixed', inset:0, zIndex:30 }} onClick={()=>setOpen(false)}></div>
           <div style={{ position:'absolute', right:0, top:'calc(100% + 6px)', zIndex:31, width:300, maxHeight:420, overflowY:'auto', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius-card)', boxShadow:'var(--shadow)', padding:12 }}>
-            {!c.confirmed && (
+            {needsConfirm(c) && (
               <button onClick={()=>{onConfirm(c);setOpen(false);}} style={{ display:'flex', alignItems:'center', gap:9, width:'100%', padding:'9px 11px', marginBottom:10, border:'none', borderRadius:'var(--radius-sm)', background:window.hexA('#6366F1',.12), color:'var(--accent-2)', fontSize:12.5, fontWeight:700, fontFamily:'inherit', cursor:'pointer', textAlign:'left' }}>
                 <Icon name="check" size={15} />ยืนยันรับเคสเข้าระบบ
               </button>
@@ -1484,7 +1487,7 @@ function CaseTable({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
               </td>
               <td style={{ textAlign:'right' }} onClick={e=>e.stopPropagation()}>
                 <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
-                  {!c.confirmed && <Btn variant="primary" size="sm" icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับ</Btn>}
+                  {needsConfirm(c) && <Btn variant="primary" size="sm" icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับ</Btn>}
                   <StatusActionMenu c={c} onSetStatus={onSetStatus} onConfirm={onConfirm} onAddStatus={onAddStatus} />
                 </div>
               </td>
@@ -1529,7 +1532,7 @@ function CaseGrid({ cases, onOpenCase, onConfirm }) {
             </div>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:14, paddingTop:13, borderTop:'1px solid var(--border)' }} onClick={e=>e.stopPropagation()}>
               <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>{c.docDate}</span>
-              {!c.confirmed
+              {needsConfirm(c)
                 ? <Btn variant="primary" size="sm" icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับ</Btn>
                 : <span style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, color:'#34D399', fontWeight:600 }}><Icon name="checkCircle" size={15} />รับเคสแล้ว</span>}
             </div>
@@ -1565,7 +1568,7 @@ function Kanban({ cases, onOpenCase, onConfirm }) {
                   </div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10, paddingTop:9, borderTop:'1px solid var(--border)' }}>
                     <span style={{ fontSize:11.5, color:'var(--text-muted)' }}>{c.docDate}</span>
-                    {!c.confirmed
+                    {needsConfirm(c)
                       ? <button onClick={(e)=>{e.stopPropagation();onConfirm(c);}} className="kconfirm"><Icon name="check" size={13} />ยืนยัน</button>
                       : <Avatar name={c.owner} size={22} />}
                   </div>
@@ -1688,8 +1691,8 @@ function CaseDrawer({ caseData, onClose, onAction, onConfirm, onUnconfirm }) {
         </div>
 
         <div className="drawer-actions">
-          {!c.confirmed && <Btn variant="primary" full icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับเคสเข้าระบบ</Btn>}
-          {c.confirmed && onUnconfirm && <Btn variant="ghost" full icon="close" onClick={()=>onUnconfirm(c)}>ยกเลิกการยืนยันรับ</Btn>}
+          {needsConfirm(c) && <Btn variant="primary" full icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับเคสเข้าระบบ</Btn>}
+          {c.confirmed && c.billStatus !== 'no_driven' && onUnconfirm && <Btn variant="ghost" full icon="close" onClick={()=>onUnconfirm(c)}>ยกเลิกการยืนยันรับ</Btn>}
           <Btn variant="solid" full icon="refresh" onClick={()=>onAction('status', c)}>เปลี่ยนสถานะ / ระบุสถานะ</Btn>
           {c.billStatus === 'consider_co' && (() => {
             const rMap = { approved:'อนุมัติ', rejected:'ไม่อนุมัติ' };
@@ -3857,7 +3860,7 @@ function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
                   </td>
                   <td style={{ textAlign:'right' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
-                      {!c.confirmed && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
+                      {needsConfirm(c) && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
                       <StatusActionMenu c={c} onSetStatus={onSetStatus} onConfirm={onConfirm} onAddStatus={onAddStatus} />
                     </div>
                   </td>
@@ -4031,7 +4034,7 @@ function CpfCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }
                   </td>
                   <td style={{ textAlign:'right' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
-                      {!c.confirmed && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
+                      {needsConfirm(c) && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
                       <StatusActionMenu c={c} onSetStatus={onSetStatus} onConfirm={onConfirm} onAddStatus={onAddStatus} />
                     </div>
                   </td>
@@ -4199,7 +4202,7 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
                   </td>
                   <td style={{ textAlign:'right' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
-                      {!c.confirmed && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
+                      {needsConfirm(c) && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
                       <StatusActionMenu c={c} onSetStatus={onSetStatus} onConfirm={onConfirm} onAddStatus={onAddStatus} />
                     </div>
                   </td>
@@ -4391,7 +4394,7 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
                   </td>
                   <td style={{ textAlign:'right' }} onClick={e => e.stopPropagation()}>
                     <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
-                      {!c.confirmed && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
+                      {needsConfirm(c) && <Btn variant="primary" size="sm" icon="check" onClick={() => onConfirm(c)}>ยืนยันรับ</Btn>}
                       <StatusActionMenu c={c} onSetStatus={onSetStatus} onConfirm={onConfirm} onAddStatus={onAddStatus} />
                     </div>
                   </td>
