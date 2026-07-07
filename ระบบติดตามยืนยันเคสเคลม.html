@@ -2425,7 +2425,11 @@ function App() {
     }
   };
 
-  const confirmCase = (c) => { update(c.id, { confirmed: true }, 'ยืนยันรับเคสเข้าระบบ', 'confirm'); showToast(`ยืนยันรับเคส ${c.receiptNo} เรียบร้อย`); };
+  const confirmCase = (c) => {
+    if (!window.confirm(`ยืนยันรับเคส ${c.receiptNo} เข้าระบบ?`)) return;
+    update(c.id, { confirmed: true }, 'ยืนยันรับเคสเข้าระบบ', 'confirm');
+    showToast(`ยืนยันรับเคส ${c.receiptNo} เรียบร้อย`);
+  };
   const unconfirmCase = (c) => {
     if (!window.confirm(`ยกเลิกการยืนยันรับเคส ${c.receiptNo}?\nเคสจะกลับไปสถานะ “รอยืนยันรับ”`)) return;
     update(c.id, { confirmed: false }, 'ยกเลิกการยืนยันรับเคส', 'unconfirm');
