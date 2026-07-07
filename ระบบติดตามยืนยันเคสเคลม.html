@@ -2680,6 +2680,7 @@ function App() {
     ['cpfcases', 'box', 'เคส CPF'],
     ['fraudcases', 'alert', 'เคสทุจริต'],
     ['delaycases', 'clock', 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ'],
+    ['nodrivencases', 'box', 'เคสไม่มีใน Drive N'],
     ['upload', 'upload', 'นำเข้าข้อมูล'],
     ['report', 'report', 'รายงาน'],
     ['settings', 'settings', 'ตั้งค่า']];
@@ -2781,6 +2782,7 @@ function App() {
           {route === 'cpfcases' && <ErrorBoundary key="cpfcases"><CpfCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'fraudcases' && <ErrorBoundary key="fraudcases"><FraudCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'delaycases' && <ErrorBoundary key="delaycases"><DelayCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
+          {route === 'nodrivencases' && <ErrorBoundary key="nodrivencases"><DelayCasesView statusKey="no_driven" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} /></ErrorBoundary>}
           {route === 'report' && <DurationReport cases={displayCases} onExport={() => exportCases(null)} />}
           {route === 'settings' && <StatusSettings cases={cases} statuses={statuses} onAddStatus={openAddStatus} onDeleteStatus={deleteStatus} onBackup={backupDB} onRestore={restoreDB} onReset={resetDB} onDeleteByDate={deleteByDocDate} dbStats={dbStats} />}
         </main>
@@ -4211,18 +4213,18 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 // ===================================================================
 // หน้าเคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ
 // ===================================================================
-function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
+function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, statusKey = 'delay_analyze' }) {
   const { useState: useStateDL, useMemo: useMemoDL } = React;
   const [q, setQ] = useStateDL('');
   const [selectedSC, setSelectedSC] = useStateDL('all');
   const [selectedCC, setSelectedCC] = useStateDL('all');
   const [lastPicked, setLastPicked] = useStateDL(null); // 'sc' | 'cc' | null — เลือกว่าจะแสดงรายการเคสใต้การ์ดกลุ่มไหน
-  const STATUS = window.STATUS_MAP['delay_analyze'];
+  const STATUS = window.STATUS_MAP[statusKey];
   const COLOR = STATUS ? STATUS.color : '#EA580C';
-  const TITLE = STATUS ? STATUS.label : 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ';
+  const TITLE = STATUS ? STATUS.label : 'เคสพิเศษ';
 
   // เคสทั้งหมดในสถานะนี้ (ก่อนกรอง SC / CC / ค้นหา)
-  const baseCases = useMemoDL(() => cases.filter(c => c.billStatus === 'delay_analyze'), [cases]);
+  const baseCases = useMemoDL(() => cases.filter(c => c.billStatus === statusKey), [cases, statusKey]);
   const matchSC = (c, name) => name === '—' ? (!c.owner   || c.owner   === '—') : c.owner   === name;
   const matchCC = (c, name) => name === '—' ? (!c.ownerCC || c.ownerCC === '—') : c.ownerCC === name;
 
@@ -4272,11 +4274,11 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
         const m = e.text && e.text.match(/"([^"]+)"/);
         if (m) {
           const found = window.STATUSES.find(s => s.label === m[1]);
-          if (found && found.key === 'delay_analyze') entryDate = new Date(e.at);
+          if (found && found.key === statusKey) entryDate = new Date(e.at);
         }
       }
     });
-    if (!entryDate && c.billStatus === 'delay_analyze') {
+    if (!entryDate && c.billStatus === statusKey) {
       const evs2 = [...(c.events||[])].sort((a,b) => new Date(a.at)-new Date(b.at));
       entryDate = evs2[0] ? new Date(evs2[0].at) : null;
     }
