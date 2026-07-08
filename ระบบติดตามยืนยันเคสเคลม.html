@@ -4552,44 +4552,51 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 // ===== เครื่องมือย้ายเคส CC กลับให้ กนกพิชญ์ =====
 function CCRevertTool({ cases }) {
   const TARGET = 'กนกพิชญ์';
-  const REMOVAL_AT = new Date('2026-07-07T07:48:48.000Z');
   const PREFIX = 'มอบหมาย CC:';
   const [candidates, setCandidates] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState(null);
+  const [selected, setSelected] = React.useState({});
 
   const analyze = () => {
     setResult(null);
+    setSelected({});
     const parseCC = (t) => (t && t.startsWith(PREFIX)) ? t.slice(PREFIX.length).trim() : null;
     const list = [];
     for (const c of cases) {
-      const evs = (c.events || [])
-        .filter(e => (e.text || '').startsWith(PREFIX))
-        .map(e => ({ at: new Date(e.at), to: parseCC(e.text) }))
-        .sort((a, b) => a.at - b.at);
-      if (!evs.length) continue;
-      if (!evs.some(e => e.to === TARGET)) continue;
-      if (!evs.some(e => e.at > REMOVAL_AT)) continue;
-      const latest = evs[evs.length - 1];
-      if (latest.to === TARGET) continue;
       if (c.ownerCC === TARGET) continue;
+      const evs = (c.events || [])
+        .filter(e => (e.text || '').includes(PREFIX))
+        .map(e => {
+          const idx = (e.text||'').indexOf(PREFIX);
+          return { at: new Date(e.at), to: parseCC(e.text.slice(idx)) };
+        })
+        .sort((a, b) => a.at - b.at);
+      const hadTarget = evs.some(e => e.to === TARGET);
+      if (!hadTarget) continue;
+      const latest = evs[evs.length - 1];
       list.push({
         id: c.id,
         receiptNo: c.receiptNo,
         currentOwnerCC: c.ownerCC || '—',
-        latestChangeAt: latest.at,
-        latestChangeTo: latest.to,
+        latestChangeAt: latest ? latest.at : null,
+        latestChangeTo: latest ? latest.to : '—',
       });
     }
+    const sel = {};
+    list.forEach(c => { sel[c.id] = true; });
+    setSelected(sel);
     setCandidates(list);
   };
 
   const apply = async () => {
     if (!candidates || !candidates.length) return;
-    if (!window.confirm(`ยืนยันย้าย ${candidates.length} เคส กลับให้ "${TARGET}" ?`)) return;
+    const toApply = candidates.filter(c => selected[c.id]);
+    if (!toApply.length) { alert('เลือกเคสอย่างน้อย 1 รายการก่อน'); return; }
+    if (!window.confirm(`ยืนยันย้าย ${toApply.length} เคส กลับให้ "${TARGET}" ?`)) return;
     setBusy(true);
     let ok = 0, fail = 0;
-    for (const cand of candidates) {
+    for (const cand of toApply) {
       try {
         const res = await fetch('/api/cases/' + cand.id, {
           method: 'PATCH',
@@ -4603,7 +4610,18 @@ function CCRevertTool({ cases }) {
     setBusy(false);
     setResult({ ok, fail });
     setCandidates(null);
+    setSelected({});
   };
+
+  const toggle = (id) => setSelected(s => ({ ...s, [id]: !s[id] }));
+  const toggleAll = () => {
+    if (!candidates) return;
+    const allOn = candidates.every(c => selected[c.id]);
+    const next = {};
+    candidates.forEach(c => { next[c.id] = !allOn; });
+    setSelected(next);
+  };
+  const selCount = candidates ? candidates.filter(c => selected[c.id]).length : 0;
 
   return (
     <div className="panel" style={{ borderColor:'#F59E0B' }}>
@@ -4613,14 +4631,14 @@ function CCRevertTool({ cases }) {
         </h3>
       </div>
       <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginTop:6 }}>
-        ค้นหาเคสที่<b> เคยเป็นของ {TARGET} </b>แต่ถูกย้ายไปให้คนอื่นหลัง <b>7 ก.ค. 2026</b> แล้วย้ายกลับให้ {TARGET}
+        ค้นหาเคสที่<b> เคยเป็นของ {TARGET} </b>(จาก event log) แต่ปัจจุบัน CC ไม่ใช่ {TARGET} — เลือกเคสที่จะย้ายกลับ แล้วกดยืนยัน
       </div>
 
       <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap' }}>
-        <Btn variant="ghost" icon="search" onClick={analyze} disabled={busy}>ค้นหาเคสที่เข้าเงื่อนไข</Btn>
+        <Btn variant="ghost" icon="search" onClick={analyze} disabled={busy}>ค้นหาเคสที่เคยเป็นของ {TARGET}</Btn>
         {candidates && candidates.length > 0 && (
-          <Btn variant="primary" icon="check" onClick={apply} disabled={busy}>
-            {busy ? 'กำลังย้าย...' : `ย้ายกลับให้ ${TARGET} (${candidates.length} เคส)`}
+          <Btn variant="primary" icon="check" onClick={apply} disabled={busy || selCount === 0}>
+            {busy ? 'กำลังย้าย...' : `ย้ายกลับให้ ${TARGET} (${selCount} เคสที่เลือก)`}
           </Btn>
         )}
       </div>
@@ -4636,10 +4654,11 @@ function CCRevertTool({ cases }) {
           {candidates.length === 0 ? (
             <div style={{ fontSize:13, color:'var(--text-muted)', padding:'12px 0' }}>ไม่พบเคสที่เข้าเงื่อนไข</div>
           ) : (
-            <div style={{ maxHeight:320, overflow:'auto', border:'1px solid var(--border)', borderRadius:8 }}>
+            <div style={{ maxHeight:360, overflow:'auto', border:'1px solid var(--border)', borderRadius:8 }}>
               <table className="ctable" style={{ margin:0 }}>
                 <thead>
                   <tr>
+                    <th style={{ width:36 }}><input type="checkbox" checked={candidates.every(c => selected[c.id])} onChange={toggleAll} /></th>
                     <th>เลขที่รับบิล</th>
                     <th>CC ปัจจุบัน</th>
                     <th>วันที่ย้ายล่าสุด</th>
@@ -4648,10 +4667,11 @@ function CCRevertTool({ cases }) {
                 </thead>
                 <tbody>
                   {candidates.map(c => (
-                    <tr key={c.id}>
+                    <tr key={c.id} onClick={() => toggle(c.id)} style={{ cursor:'pointer', background: selected[c.id] ? hexA('#F59E0B',.08) : undefined }}>
+                      <td onClick={e => e.stopPropagation()}><input type="checkbox" checked={!!selected[c.id]} onChange={() => toggle(c.id)} /></td>
                       <td style={{ fontWeight:700, fontFeatureSettings:'"tnum"' }}>{c.receiptNo}</td>
                       <td>{c.currentOwnerCC}</td>
-                      <td style={{ fontFeatureSettings:'"tnum"', fontSize:12.5, color:'var(--text-muted)' }}>{c.latestChangeAt.toLocaleString('th-TH')}</td>
+                      <td style={{ fontFeatureSettings:'"tnum"', fontSize:12.5, color:'var(--text-muted)' }}>{c.latestChangeAt ? c.latestChangeAt.toLocaleString('th-TH') : '—'}</td>
                       <td>{c.latestChangeTo}</td>
                     </tr>
                   ))}
