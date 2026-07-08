@@ -2682,6 +2682,7 @@ function App() {
     ['delaycases', 'clock', 'เคสวิเคราะห์ล่าช้า'],
     ['nodrivencases', 'box', 'เคสไม่มีใน Drive N'],
     ['notacceptedcases', 'note', 'ไม่รับเคส (เพิ่มข้อมูล)'],
+    ['dcsummary', 'truck', 'สรุปตาม DC/หน่วยงาน'],
     ['upload', 'upload', 'นำเข้าข้อมูล'],
     ['report', 'report', 'รายงาน'],
     ['settings', 'settings', 'ตั้งค่า']];
@@ -2792,6 +2793,7 @@ function App() {
           {route === 'delaycases' && <ErrorBoundary key="delaycases"><DelayCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
           {route === 'nodrivencases' && <ErrorBoundary key="nodrivencases"><DelayCasesView statusKey="no_driven" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
           {route === 'notacceptedcases' && <ErrorBoundary key="notacceptedcases"><DelayCasesView statusKey="not_accepted" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
+          {route === 'dcsummary' && <ErrorBoundary key="dcsummary"><DCSummaryView cases={displayCases} onOpenCase={setOpenCase} /></ErrorBoundary>}
           {route === 'report' && <DurationReport cases={displayCases} onExport={() => exportCases(null)} />}
           {route === 'settings' && <StatusSettings cases={cases} statuses={statuses} onAddStatus={openAddStatus} onDeleteStatus={deleteStatus} onBackup={backupDB} onRestore={restoreDB} onReset={resetDB} onDeleteByDate={deleteByDocDate} dbStats={dbStats} />}
         </main>
@@ -4533,6 +4535,212 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 
       {/* รายการเคสของ CC ที่เลือก หรือค่าเริ่มต้น — แสดงต่อจากการ์ด CC */}
       {lastPicked !== 'sc' && resultsBlock}
+    </div>
+  );
+}
+
+// ===== หน้าสรุปตาม DC/หน่วยงาน ที่เสียหาย =====
+function DCSummaryView({ cases, onOpenCase }) {
+  const { useState: useStateDC, useMemo: useMemoDC } = React;
+  const [q, setQ] = useStateDC('');
+  const [expanded, setExpanded] = useStateDC({});
+  const [sortBy, setSortBy] = useStateDC('amount');
+
+  const { pivot, billTypes, totals } = useMemoDC(() => {
+    const btSet = new Set();
+    const byDC = new Map();
+    for (const c of cases) {
+      const dc = c.faultDC && c.faultDC.trim() ? c.faultDC.trim() : 'ไม่ระบุ';
+      const bt = c.billType && c.billType.trim() ? c.billType.trim() : 'ไม่ระบุประเภท';
+      btSet.add(bt);
+      if (!byDC.has(dc)) byDC.set(dc, { dc, cells: {}, totalCount: 0, totalAmt: 0, cases: [] });
+      const row = byDC.get(dc);
+      if (!row.cells[bt]) row.cells[bt] = { count: 0, amt: 0, cases: [] };
+      row.cells[bt].count += 1;
+      row.cases.push(c);
+      row.cells[bt].cases.push(c);
+      row.totalCount += 1;
+      const amt = Number(c.claimAmount) || 0;
+      row.cells[bt].amt += amt;
+      row.totalAmt += amt;
+    }
+    const billTypes = [...btSet].sort((a, b) => a.localeCompare(b, 'th'));
+    const totals = { count: 0, amt: 0, byBt: {} };
+    for (const row of byDC.values()) {
+      totals.count += row.totalCount;
+      totals.amt += row.totalAmt;
+      for (const bt of billTypes) {
+        if (!totals.byBt[bt]) totals.byBt[bt] = { count: 0, amt: 0 };
+        totals.byBt[bt].count += row.cells[bt]?.count || 0;
+        totals.byBt[bt].amt += row.cells[bt]?.amt || 0;
+      }
+    }
+    return { pivot: [...byDC.values()], billTypes, totals };
+  }, [cases]);
+
+  const filteredPivot = useMemoDC(() => {
+    let list = pivot;
+    if (q) {
+      const lower = q.toLowerCase();
+      list = list.filter(r => r.dc.toLowerCase().includes(lower));
+    }
+    const cmp = sortBy === 'name'
+      ? (a, b) => a.dc.localeCompare(b.dc, 'th')
+      : sortBy === 'count'
+      ? (a, b) => b.totalCount - a.totalCount
+      : (a, b) => b.totalAmt - a.totalAmt;
+    return [...list].sort(cmp);
+  }, [pivot, q, sortBy]);
+
+  const exportCsv = () => {
+    const cols = ['DC/หน่วยงาน', ...billTypes.flatMap(bt => [`${bt} · เคส`, `${bt} · มูลค่า`]), 'รวม เคส', 'รวม มูลค่า'];
+    const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const rows = filteredPivot.map(r => [
+      r.dc,
+      ...billTypes.flatMap(bt => [r.cells[bt]?.count || 0, r.cells[bt]?.amt || 0]),
+      r.totalCount, r.totalAmt
+    ].map(esc).join(','));
+    const csv = '﻿' + cols.map(esc).join(',') + '\n' + rows.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'dc_summary.csv'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const money = (n) => n > 0 ? '฿' + Math.round(n).toLocaleString('th-TH') : '—';
+
+  return (
+    <div className="page-pad" style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      <div>
+        <div style={{ fontSize:13, color:'var(--accent-2)', fontWeight:600, letterSpacing:'.04em' }}>รายงานสรุป</div>
+        <h1 style={{ fontFamily:'var(--font-display)', fontSize:26, fontWeight:700, margin:'4px 0 0', letterSpacing:'-0.02em' }}>สรุปตาม DC/หน่วยงาน ที่เสียหาย</h1>
+        <div style={{ fontSize:13.5, color:'var(--text-muted)', marginTop:4 }}>
+          แยกตามประเภทบิล — แสดงจำนวนเคสและมูลค่ายืนยันเคลมของแต่ละ DC
+        </div>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))', gap:14 }}>
+        {[
+          { label:'DC/หน่วยงาน ทั้งหมด', value: filteredPivot.length,                            icon:'truck', color:'#3B82F6' },
+          { label:'เคสรวม',              value: totals.count.toLocaleString('th-TH'),           icon:'box',   color:'#8B5CF6' },
+          { label:'มูลค่ารวม',           value: totals.amt > 0 ? '฿'+Math.round(totals.amt).toLocaleString('th-TH') : '—', icon:'note',  color:'#34D399' },
+        ].map(({ label, value, icon, color }) => (
+          <div key={label} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--radius-card)', padding:'16px 18px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', inset:0, background:`radial-gradient(120% 120% at 100% 0%, ${hexA(color,.1)}, transparent 55%)`, pointerEvents:'none' }}></div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', position:'relative' }}>
+              <div style={{ fontSize:12.5, color:'var(--text-muted)', fontWeight:500 }}>{label}</div>
+              <span style={{ width:30, height:30, borderRadius:9, display:'grid', placeItems:'center', color, background:hexA(color,.12) }}><Icon name={icon} size={16} /></span>
+            </div>
+            <div style={{ fontSize:24, fontWeight:800, color:'var(--text)', marginTop:8, position:'relative', fontFeatureSettings:'"tnum"', letterSpacing:'-0.02em' }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="toolbar">
+        <div className="search-box">
+          <Icon name="search" size={17} style={{ color:'var(--text-muted)', flexShrink:0 }} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="ค้นหา DC/หน่วยงาน..." />
+          {q && <button onClick={() => setQ('')} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', display:'grid', placeItems:'center' }}><Icon name="close" size={15} /></button>}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginLeft:'auto' }}>
+          <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>เรียงตาม:</span>
+          <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ padding:'6px 10px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-2)', color:'var(--text)', fontFamily:'inherit', fontSize:13 }}>
+            <option value="amount">มูลค่า (มาก→น้อย)</option>
+            <option value="count">จำนวนเคส (มาก→น้อย)</option>
+            <option value="name">ชื่อ DC (ก→ฮ)</option>
+          </select>
+          <Btn variant="ghost" icon="download" size="md" onClick={exportCsv}>ส่งออก</Btn>
+        </div>
+      </div>
+
+      <div className="table-wrap" style={{ maxHeight:'calc(100vh - 340px)', minHeight:320 }}>
+        <table className="ctable">
+          <thead>
+            <tr>
+              <th style={{ width:36 }}></th>
+              <th>DC/หน่วยงาน ที่เสียหาย</th>
+              {billTypes.map(bt => (
+                <React.Fragment key={bt}>
+                  <th style={{ textAlign:'right' }}>{bt}<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>เคส</span></th>
+                  <th style={{ textAlign:'right' }}>&nbsp;<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>มูลค่า</span></th>
+                </React.Fragment>
+              ))}
+              <th style={{ textAlign:'right', background:'var(--surface-3)' }}>รวม<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>เคส</span></th>
+              <th style={{ textAlign:'right', background:'var(--surface-3)' }}>&nbsp;<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>มูลค่า</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredPivot.map(r => {
+              const isOpen = !!expanded[r.dc];
+              return (
+                <React.Fragment key={r.dc}>
+                  <tr onClick={() => setExpanded(s => ({ ...s, [r.dc]: !s[r.dc] }))} style={{ cursor:'pointer' }}>
+                    <td style={{ textAlign:'center', fontSize:11, color:'var(--text-muted)' }}>{isOpen ? '▼' : '▶'}</td>
+                    <td style={{ fontWeight:600 }}>{r.dc}</td>
+                    {billTypes.map(bt => (
+                      <React.Fragment key={bt}>
+                        <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"' }}>{r.cells[bt]?.count ? r.cells[bt].count.toLocaleString('th-TH') : <span style={{ color:'var(--text-muted)' }}>—</span>}</td>
+                        <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', color: r.cells[bt]?.amt > 0 ? '#34D399' : 'var(--text-muted)' }}>{money(r.cells[bt]?.amt || 0)}</td>
+                      </React.Fragment>
+                    ))}
+                    <td style={{ textAlign:'right', fontWeight:700, fontFeatureSettings:'"tnum"', background:hexA('#3B82F6',.06) }}>{r.totalCount.toLocaleString('th-TH')}</td>
+                    <td style={{ textAlign:'right', fontWeight:700, fontFeatureSettings:'"tnum"', color:'#34D399', background:hexA('#3B82F6',.06) }}>{money(r.totalAmt)}</td>
+                  </tr>
+                  {isOpen && (
+                    <tr>
+                      <td colSpan={2 + billTypes.length * 2 + 2} style={{ padding:0, background:'var(--surface-3)' }}>
+                        <div style={{ padding:'8px 14px' }}>
+                          <div style={{ fontSize:12, color:'var(--text-muted)', marginBottom:6 }}>รายเคสของ {r.dc} · {r.totalCount} เคส</div>
+                          <table className="ctable" style={{ margin:0, background:'var(--surface-2)', borderRadius:6, overflow:'hidden' }}>
+                            <thead>
+                              <tr>
+                                <th>เลขที่รับบิล</th>
+                                <th>วันที่เอกสาร</th>
+                                <th>ประเภทบิล</th>
+                                <th>ผู้ส่ง → ผู้รับ</th>
+                                <th style={{ textAlign:'right' }}>มูลค่ายืนยันเคลม</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {r.cases.slice(0, 50).map(c => (
+                                <tr key={c.id} onClick={e => { e.stopPropagation(); onOpenCase && onOpenCase(c); }} className="crow" style={{ cursor:'pointer' }}>
+                                  <td style={{ fontWeight:700, fontFeatureSettings:'"tnum"' }}>{c.receiptNo}</td>
+                                  <td style={{ fontFeatureSettings:'"tnum"', fontSize:12.5 }}>{c.docDate || '—'}</td>
+                                  <td>{c.billType || '—'}</td>
+                                  <td style={{ fontSize:12.5 }}>{c.sender} → {c.receiver}</td>
+                                  <td style={{ textAlign:'right', fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>{c.claimAmount != null ? '฿'+Number(c.claimAmount).toLocaleString('th-TH') : '—'}</td>
+                                </tr>
+                              ))}
+                              {r.cases.length > 50 && (
+                                <tr><td colSpan={5} style={{ textAlign:'center', fontSize:12, color:'var(--text-muted)', padding:'8px' }}>— แสดง 50 จาก {r.cases.length} เคส —</td></tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ background:'var(--surface-3)', fontWeight:700 }}>
+              <td></td>
+              <td>รวมทั้งหมด</td>
+              {billTypes.map(bt => (
+                <React.Fragment key={bt}>
+                  <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"' }}>{(totals.byBt[bt]?.count || 0).toLocaleString('th-TH')}</td>
+                  <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', color:'#34D399' }}>{money(totals.byBt[bt]?.amt || 0)}</td>
+                </React.Fragment>
+              ))}
+              <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', background:hexA('#3B82F6',.12) }}>{totals.count.toLocaleString('th-TH')}</td>
+              <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', color:'#34D399', background:hexA('#3B82F6',.12) }}>{money(totals.amt)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }
