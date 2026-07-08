@@ -2711,12 +2711,19 @@ function App() {
           </div>
         </div>
         <nav className="nav">
-          {nav.map(([k, ic, lb]) =>
-          <button key={k} className={'nav-item' + (route === k ? ' active' : '')} onClick={() => { if (k === 'upload') { setShowUpload(true); } else { setRoute(k); setCasesFilter(null); } setNavOpen(false); }} style={{ fontFamily: "Anuphan" }}>
-              <Icon name={ic} size={19} /><span style={{ fontFamily: "Anuphan" }}>{lb}</span>
-              {k === 'cases' && sum.unconfirmed > 0 && <span className="nav-badge">{sum.unconfirmed}</span>}
-            </button>
-          )}
+          {(() => {
+            const NAV_STATUS_KEY = { considerco:'consider_co', cpfcases:'CPF', fraudcases:'fraud', delaycases:'delay_analyze', nodrivencases:'no_driven' };
+            return nav.map(([k, ic, lb]) => {
+              const statusCount = NAV_STATUS_KEY[k] ? (sum.byStatus[NAV_STATUS_KEY[k]] || 0) : 0;
+              return (
+                <button key={k} className={'nav-item' + (route === k ? ' active' : '')} onClick={() => { if (k === 'upload') { setShowUpload(true); } else { setRoute(k); setCasesFilter(null); } setNavOpen(false); }} style={{ fontFamily: "Anuphan" }}>
+                  <Icon name={ic} size={19} /><span style={{ fontFamily: "Anuphan" }}>{lb}</span>
+                  {k === 'cases' && sum.unconfirmed > 0 && <span className="nav-badge">{sum.unconfirmed}</span>}
+                  {statusCount > 0 && <span className="nav-badge">{statusCount}</span>}
+                </button>
+              );
+            });
+          })()}
         </nav>
         <div className="sidebar-foot">
           <div className="user-chip">
