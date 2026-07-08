@@ -268,22 +268,8 @@ const DEFAULT_STATUSES = [
   { key: 'CPF',         label: 'เคส CPF',                            color: '#EAB308', group: 'ดำเนินการ' },
   { key: 'fraud',        label: 'เคสทุจริต',                         color: '#4B5563', group: 'ดำเนินการ', terminal: true },
   { key: 'closed',       label: 'ปิดจบไม่เคลม',                     color: '#10B981', group: 'ดำเนินการ', terminal: true },
-  // สถานะเคลม (A00–A89) จากรายงาน
-  { key: 'A00', label: 'A00 อยู่ระหว่างการพิจารณา',                 color: '#38BDF8', group: 'สถานะเคลม' },
-  { key: 'A01', label: 'A01 อยู่ระหว่างการส่งเอกสารประกอบการเคลม',   color: '#818CF8', group: 'สถานะเคลม' },
-  { key: 'A02', label: 'A02 อยู่ระหว่างการตรวจสอบเอกสาร',           color: '#A78BFA', group: 'สถานะเคลม' },
-  { key: 'A03', label: 'A03 อยู่ระหว่างการโอนเงิน',                 color: '#F472B6', group: 'สถานะเคลม' },
-  { key: 'A04', label: 'A04 โอนเงิน',                              color: '#34D399', group: 'สถานะเคลม', terminal: true },
-  { key: 'A89', label: 'A89 ปิดจบ ไม่เคลม',                        color: '#94A3B8', group: 'สถานะเคลม', terminal: true },
-  // สถานะเคลียร์ (B00–B05) จากรายงาน
-  { key: 'B00', label: 'B00 อยู่ระหว่างการประเมินผู้รับผิดชอบ',      color: '#FBBF24', group: 'สถานะเคลียร์' },
-  { key: 'B01', label: 'B01 อยู่ระหว่างการตอบกลับของ DC',          color: '#FB923C', group: 'สถานะเคลียร์' },
-  { key: 'B02', label: 'B02 อยู่ระหว่างการอนุมัติของผู้บริหาร',      color: '#F59E0B', group: 'สถานะเคลียร์' },
-  { key: 'B03', label: 'B03 ค้างส่งเอกสารหักเงิน',                 color: '#EF4444', group: 'สถานะเคลียร์' },
-  { key: 'B04', label: 'B04 เคลียร์รับเอกสาร',                     color: '#2DD4BF', group: 'สถานะเคลียร์' },
-  { key: 'B05', label: 'B05 บัญชีรับเอกสาร',                       color: '#22D3EE', group: 'สถานะเคลียร์', terminal: true },
 ];
-const STATUS_GROUPS = ['ดำเนินการ', 'สถานะเคลม', 'สถานะเคลียร์', 'กำหนดเอง'];
+const STATUS_GROUPS = ['ดำเนินการ', 'กำหนดเอง'];
 const STATUSES = DEFAULT_STATUSES;
 const STATUS_MAP = Object.fromEntries(STATUSES.map(s => [s.key, s]));
 const STATUS_ORDER = STATUSES.map(s => s.key);

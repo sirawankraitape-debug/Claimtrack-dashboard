@@ -27,19 +27,8 @@ const DEFAULT_STATUSES = [
   { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:0, sort_order:10 },
   { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:11 },
   { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:12 },
-  { key:'A00', label:'A00 อยู่ระหว่างการพิจารณา',                   color:'#38BDF8', grp:'สถานะเคลม',    terminal:0, sort_order:13 },
-  { key:'A01', label:'A01 อยู่ระหว่างการส่งเอกสารประกอบการเคลม',    color:'#818CF8', grp:'สถานะเคลม',    terminal:0, sort_order:14 },
-  { key:'A02', label:'A02 อยู่ระหว่างการตรวจสอบเอกสาร',             color:'#A78BFA', grp:'สถานะเคลม',    terminal:0, sort_order:15 },
-  { key:'A03', label:'A03 อยู่ระหว่างการโอนเงิน',                   color:'#F472B6', grp:'สถานะเคลม',    terminal:0, sort_order:16 },
-  { key:'A04', label:'A04 โอนเงิน',                                color:'#34D399', grp:'สถานะเคลม',    terminal:1, sort_order:17 },
-  { key:'A89', label:'A89 ปิดจบ ไม่เคลม',                          color:'#94A3B8', grp:'สถานะเคลม',    terminal:1, sort_order:18 },
-  { key:'B00', label:'B00 อยู่ระหว่างการประเมินผู้รับผิดชอบ',       color:'#FBBF24', grp:'สถานะเคลียร์', terminal:0, sort_order:20 },
-  { key:'B01', label:'B01 อยู่ระหว่างการตอบกลับของ DC',            color:'#FB923C', grp:'สถานะเคลียร์', terminal:0, sort_order:21 },
-  { key:'B02', label:'B02 อยู่ระหว่างการอนุมัติของผู้บริหาร',       color:'#F59E0B', grp:'สถานะเคลียร์', terminal:0, sort_order:22 },
-  { key:'B03', label:'B03 ค้างส่งเอกสารหักเงิน',                   color:'#EF4444', grp:'สถานะเคลียร์', terminal:0, sort_order:23 },
-  { key:'B04', label:'B04 เคลียร์รับเอกสาร',                       color:'#2DD4BF', grp:'สถานะเคลียร์', terminal:0, sort_order:24 },
-  { key:'B05', label:'B05 บัญชีรับเอกสาร',                         color:'#22D3EE', grp:'สถานะเคลียร์', terminal:1, sort_order:25 },
 ];
+const REMOVED_STATUS_KEYS = ['A00','A01','A02','A03','A04','A89','B00','B01','B02','B03','B04','B05'];
 
 // ───── สร้างตาราง + seed (synchronous) ──────────────────────────
 const init = async () => {
@@ -127,6 +116,11 @@ const init = async () => {
 
   // ล้าง status เคสที่ยังไม่ยืนยัน (migration สำหรับข้อมูลเก่า)
   db.prepare('UPDATE cases SET bill_status = NULL WHERE confirmed = 0 AND bill_status IS NOT NULL').run();
+
+  // ลบสถานะ A00-A89, B00-B05 ที่เลิกใช้แล้ว
+  const placeholders = REMOVED_STATUS_KEYS.map(() => '?').join(',');
+  db.prepare(`UPDATE cases SET bill_status = NULL WHERE bill_status IN (${placeholders})`).run(...REMOVED_STATUS_KEYS);
+  db.prepare(`DELETE FROM statuses WHERE key IN (${placeholders})`).run(...REMOVED_STATUS_KEYS);
 };
 
 // ───── Cases ────────────────────────────────────────────────────
