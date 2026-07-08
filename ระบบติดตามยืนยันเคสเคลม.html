@@ -263,6 +263,7 @@ const DEFAULT_STATUSES = [
   { key: 'received',     label: 'ได้รับเอกสารแล้ว',                 color: '#3B82F6', group: 'ดำเนินการ' },
   { key: 'delay_analyze',label: 'เคสวิเคราะห์ล่าช้า', color: '#EA580C', group: 'ดำเนินการ' },
   { key: 'no_driven',    label: 'ไม่มีใน Drive N',                   color: '#64748B', group: 'ดำเนินการ' },
+  { key: 'not_accepted', label: 'ไม่รับเคส (เพิ่มข้อมูล)',            color: '#9333EA', group: 'ดำเนินการ' },
   { key: 'consider_co', label: 'ขอพิจารณาลงบริษัท',                color: '#EC4899', group: 'ดำเนินการ' },
   { key: 'CPF',         label: 'เคส CPF',                            color: '#EAB308', group: 'ดำเนินการ' },
   { key: 'fraud',        label: 'เคสทุจริต',                         color: '#4B5563', group: 'ดำเนินการ', terminal: true },
@@ -809,7 +810,7 @@ function Avatar({ name, size = 30 }) {
 }
 
 // แสดงปุ่ม "ยืนยันรับ" เมื่อยังไม่ยืนยัน หรือเคสอยู่ในสถานะ "ไม่มีใน Drive N"
-function needsConfirm(c) { return !c.confirmed || c.billStatus === 'no_driven'; }
+function needsConfirm(c) { return !c.confirmed || c.billStatus === 'no_driven' || c.billStatus === 'not_accepted'; }
 
 function Btn({ children, variant = 'ghost', size = 'md', icon, onClick, style, title, disabled, full }) {
   const sizes = { sm: ['7px 12px', 13], md: ['9px 16px', 14], lg: ['12px 22px', 15] };
