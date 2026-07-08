@@ -4549,6 +4549,122 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
   );
 }
 
+// ===== เครื่องมือย้ายเคส CC กลับให้ กนกพิชญ์ =====
+function CCRevertTool({ cases }) {
+  const TARGET = 'กนกพิชญ์';
+  const REMOVAL_AT = new Date('2026-07-07T07:48:48.000Z');
+  const PREFIX = 'มอบหมาย CC:';
+  const [candidates, setCandidates] = React.useState(null);
+  const [busy, setBusy] = React.useState(false);
+  const [result, setResult] = React.useState(null);
+
+  const analyze = () => {
+    setResult(null);
+    const parseCC = (t) => (t && t.startsWith(PREFIX)) ? t.slice(PREFIX.length).trim() : null;
+    const list = [];
+    for (const c of cases) {
+      const evs = (c.events || [])
+        .filter(e => (e.text || '').startsWith(PREFIX))
+        .map(e => ({ at: new Date(e.at), to: parseCC(e.text) }))
+        .sort((a, b) => a.at - b.at);
+      if (!evs.length) continue;
+      if (!evs.some(e => e.to === TARGET)) continue;
+      if (!evs.some(e => e.at > REMOVAL_AT)) continue;
+      const latest = evs[evs.length - 1];
+      if (latest.to === TARGET) continue;
+      if (c.ownerCC === TARGET) continue;
+      list.push({
+        id: c.id,
+        receiptNo: c.receiptNo,
+        currentOwnerCC: c.ownerCC || '—',
+        latestChangeAt: latest.at,
+        latestChangeTo: latest.to,
+      });
+    }
+    setCandidates(list);
+  };
+
+  const apply = async () => {
+    if (!candidates || !candidates.length) return;
+    if (!window.confirm(`ยืนยันย้าย ${candidates.length} เคส กลับให้ "${TARGET}" ?`)) return;
+    setBusy(true);
+    let ok = 0, fail = 0;
+    for (const cand of candidates) {
+      try {
+        const res = await fetch('/api/cases/' + cand.id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ownerCC: TARGET }),
+        });
+        const j = await res.json();
+        if (j.ok) ok++; else fail++;
+      } catch (e) { fail++; }
+    }
+    setBusy(false);
+    setResult({ ok, fail });
+    setCandidates(null);
+  };
+
+  return (
+    <div className="panel" style={{ borderColor:'#F59E0B' }}>
+      <div className="panel-head">
+        <h3 className="panel-title" style={{ display:'flex', alignItems:'center', gap:8, color:'#B45309' }}>
+          <Icon name="userPlus" size={17} /> เครื่องมือย้ายเคส CC กลับให้ "{TARGET}"
+        </h3>
+      </div>
+      <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginTop:6 }}>
+        ค้นหาเคสที่<b> เคยเป็นของ {TARGET} </b>แต่ถูกย้ายไปให้คนอื่นหลัง <b>7 ก.ค. 2026</b> แล้วย้ายกลับให้ {TARGET}
+      </div>
+
+      <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap' }}>
+        <Btn variant="ghost" icon="search" onClick={analyze} disabled={busy}>ค้นหาเคสที่เข้าเงื่อนไข</Btn>
+        {candidates && candidates.length > 0 && (
+          <Btn variant="primary" icon="check" onClick={apply} disabled={busy}>
+            {busy ? 'กำลังย้าย...' : `ย้ายกลับให้ ${TARGET} (${candidates.length} เคส)`}
+          </Btn>
+        )}
+      </div>
+
+      {result && (
+        <div style={{ marginTop:14, padding:'10px 14px', borderRadius:8, background: result.fail ? hexA('#F59E0B',.12) : hexA('#10B981',.12), color: result.fail ? '#B45309' : '#065F46', fontSize:13, fontWeight:600 }}>
+          เสร็จสิ้น: สำเร็จ {result.ok} เคส, ล้มเหลว {result.fail} เคส {result.fail ? '' : '— ทั้งหมดถูกย้ายกลับเรียบร้อย'}
+        </div>
+      )}
+
+      {candidates && (
+        <div style={{ marginTop:14 }}>
+          {candidates.length === 0 ? (
+            <div style={{ fontSize:13, color:'var(--text-muted)', padding:'12px 0' }}>ไม่พบเคสที่เข้าเงื่อนไข</div>
+          ) : (
+            <div style={{ maxHeight:320, overflow:'auto', border:'1px solid var(--border)', borderRadius:8 }}>
+              <table className="ctable" style={{ margin:0 }}>
+                <thead>
+                  <tr>
+                    <th>เลขที่รับบิล</th>
+                    <th>CC ปัจจุบัน</th>
+                    <th>วันที่ย้ายล่าสุด</th>
+                    <th>ย้ายไปเป็น</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {candidates.map(c => (
+                    <tr key={c.id}>
+                      <td style={{ fontWeight:700, fontFeatureSettings:'"tnum"' }}>{c.receiptNo}</td>
+                      <td>{c.currentOwnerCC}</td>
+                      <td style={{ fontFeatureSettings:'"tnum"', fontSize:12.5, color:'var(--text-muted)' }}>{c.latestChangeAt.toLocaleString('th-TH')}</td>
+                      <td>{c.latestChangeTo}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ===== หน้าตั้งค่า: ฐานข้อมูล + จัดการสถานะ =====
 function StatusSettings({ cases, statuses, onAddStatus, onDeleteStatus, onBackup, onRestore, onReset, onDeleteByDate, dbStats }) {
   const sum = window.summarize(cases);
@@ -4681,6 +4797,9 @@ function StatusSettings({ cases, statuses, onAddStatus, onDeleteStatus, onBackup
           </a>
         </div>
       </div>}
+
+      {/* ===== เครื่องมือย้ายเคส CC กลับให้ กนกพิชญ์ ===== */}
+      <CCRevertTool cases={cases} />
 
       {/* ===== จัดการสถานะ ===== */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
