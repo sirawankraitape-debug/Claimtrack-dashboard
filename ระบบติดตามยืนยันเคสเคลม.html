@@ -261,7 +261,7 @@ const DEFAULT_STATUSES = [
   { key: 'find_owner',   label: 'อยู่ระหว่างขอรายชื่อผู้รับผิดชอบ',  color: '#F59E0B', group: 'ดำเนินการ' },
   { key: 'sent_owner',   label: 'ส่งเอกสารให้ผู้รับผิดชอบ',          color: '#8B5CF6', group: 'ดำเนินการ' },
   { key: 'received',     label: 'ได้รับเอกสารแล้ว',                 color: '#3B82F6', group: 'ดำเนินการ' },
-  { key: 'delay_analyze',label: 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ', color: '#EA580C', group: 'ดำเนินการ' },
+  { key: 'delay_analyze',label: 'เคสวิเคราะห์ล่าช้า', color: '#EA580C', group: 'ดำเนินการ' },
   { key: 'no_driven',    label: 'ไม่มีใน Drive N',                   color: '#64748B', group: 'ดำเนินการ' },
   { key: 'consider_co', label: 'ขอพิจารณาลงบริษัท',                color: '#EC4899', group: 'ดำเนินการ' },
   { key: 'CPF',         label: 'เคส CPF',                            color: '#EAB308', group: 'ดำเนินการ' },
@@ -2692,7 +2692,7 @@ function App() {
     ['considerco', 'layers', 'เคสขอพิจารณาลงบริษัท'],
     ['cpfcases', 'box', 'เคส CPF'],
     ['fraudcases', 'alert', 'เคสทุจริต'],
-    ['delaycases', 'clock', 'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ'],
+    ['delaycases', 'clock', 'เคสวิเคราะห์ล่าช้า'],
     ['nodrivencases', 'box', 'เคสไม่มีใน Drive N'],
     ['upload', 'upload', 'นำเข้าข้อมูล'],
     ['report', 'report', 'รายงาน'],
@@ -4235,7 +4235,7 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 }
 
 // ===================================================================
-// หน้าเคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ
+// หน้าเคสวิเคราะห์ล่าช้า
 // ===================================================================
 function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, statusKey = 'delay_analyze', onExport }) {
   const { useState: useStateDL, useMemo: useMemoDL } = React;

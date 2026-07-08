@@ -18,7 +18,7 @@ const DEFAULT_STATUSES = [
   { key:'find_owner',    label:'อยู่ระหว่างขอรายชื่อผู้รับผิดชอบ',   color:'#F59E0B', grp:'ดำเนินการ',    terminal:false, sort_order:3  },
   { key:'sent_owner',    label:'ส่งเอกสารให้ผู้รับผิดชอบ',           color:'#8B5CF6', grp:'ดำเนินการ',    terminal:false, sort_order:4  },
   { key:'received',      label:'ได้รับเอกสารแล้ว',                  color:'#3B82F6', grp:'ดำเนินการ',    terminal:false, sort_order:5  },
-  { key:'delay_analyze', label:'เคสวิเคราะห์ล่าช้า เคลมระบุชื่อผู้รับผิดชอบ', color:'#EA580C', grp:'ดำเนินการ', terminal:false, sort_order:6  },
+  { key:'delay_analyze', label:'เคสวิเคราะห์ล่าช้า', color:'#EA580C', grp:'ดำเนินการ', terminal:false, sort_order:6  },
   { key:'no_driven',     label:'ไม่มีใน Drive N',                    color:'#64748B', grp:'ดำเนินการ',    terminal:false, sort_order:7  },
   { key:'consider_co',   label:'ขอพิจารณาลงบริษัท',                 color:'#EC4899', grp:'ดำเนินการ',    terminal:false, sort_order:8  },
   { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:false, sort_order:9  },
@@ -100,7 +100,11 @@ const init = async () => {
     await pool.query(
       `INSERT INTO statuses (key,label,color,grp,terminal,sort_order)
        VALUES ($1,$2,$3,$4,$5,$6)
-       ON CONFLICT (key) DO UPDATE SET sort_order = EXCLUDED.sort_order`,
+       ON CONFLICT (key) DO UPDATE SET
+         label = EXCLUDED.label,
+         color = EXCLUDED.color,
+         grp = EXCLUDED.grp,
+         sort_order = EXCLUDED.sort_order`,
       [s.key, s.label, s.color, s.grp, s.terminal, s.sort_order]
     );
   }
