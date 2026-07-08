@@ -3759,6 +3759,9 @@ function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
         ))}
       </div>
 
+      {/* Pivot: DC × ประเภทบิล */}
+      <DCPivotTable cases={filtered} defaultOpen={false} compact />
+
       {/* Search */}
       <div className="toolbar">
         <div className="search-box">
@@ -4535,6 +4538,152 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
 
       {/* รายการเคสของ CC ที่เลือก หรือค่าเริ่มต้น — แสดงต่อจากการ์ด CC */}
       {lastPicked !== 'sc' && resultsBlock}
+    </div>
+  );
+}
+
+// ===== Reusable pivot: DC × billType (จำนวนเคส + มูลค่ายืนยันเคลม) =====
+function DCPivotTable({ cases, onOpenCase, defaultOpen, compact }) {
+  const { useState: useStateP, useMemo: useMemoP } = React;
+  const [open, setOpen] = useStateP(defaultOpen === true);
+  const [expanded, setExpanded] = useStateP({});
+
+  const { pivot, billTypes, totals } = useMemoP(() => {
+    const btSet = new Set();
+    const byDC = new Map();
+    for (const c of cases) {
+      const dc = c.faultDC && c.faultDC.trim() ? c.faultDC.trim() : 'ไม่ระบุ';
+      const bt = c.billType && c.billType.trim() ? c.billType.trim() : 'ไม่ระบุประเภท';
+      btSet.add(bt);
+      if (!byDC.has(dc)) byDC.set(dc, { dc, cells: {}, totalCount: 0, totalAmt: 0, cases: [] });
+      const row = byDC.get(dc);
+      if (!row.cells[bt]) row.cells[bt] = { count: 0, amt: 0, cases: [] };
+      row.cells[bt].count += 1;
+      row.cases.push(c);
+      row.cells[bt].cases.push(c);
+      row.totalCount += 1;
+      const amt = Number(c.claimAmount) || 0;
+      row.cells[bt].amt += amt;
+      row.totalAmt += amt;
+    }
+    const billTypes = [...btSet].sort((a, b) => a.localeCompare(b, 'th'));
+    const totals = { count: 0, amt: 0, byBt: {} };
+    for (const row of byDC.values()) {
+      totals.count += row.totalCount;
+      totals.amt += row.totalAmt;
+      for (const bt of billTypes) {
+        if (!totals.byBt[bt]) totals.byBt[bt] = { count: 0, amt: 0 };
+        totals.byBt[bt].count += row.cells[bt]?.count || 0;
+        totals.byBt[bt].amt += row.cells[bt]?.amt || 0;
+      }
+    }
+    const list = [...byDC.values()].sort((a, b) => b.totalAmt - a.totalAmt);
+    return { pivot: list, billTypes, totals };
+  }, [cases]);
+
+  const money = (n) => n > 0 ? '฿' + Math.round(n).toLocaleString('th-TH') : '—';
+
+  if (!cases.length) return null;
+
+  return (
+    <div className="panel" style={{ borderColor:'var(--border)' }}>
+      <div className="panel-head" onClick={() => setOpen(o => !o)} style={{ cursor:'pointer' }}>
+        <h3 className="panel-title" style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize:11, color:'var(--text-muted)' }}>{open ? '▼' : '▶'}</span>
+          <Icon name="truck" size={16} /> สรุปตาม DC/หน่วยงาน ที่เสียหาย × ประเภทบิล
+        </h3>
+        <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>{pivot.length} DC · {totals.count} เคส · {money(totals.amt)}</span>
+      </div>
+
+      {open && (
+        <div style={{ marginTop:10, maxHeight: compact ? 340 : 500, overflow:'auto', border:'1px solid var(--border)', borderRadius:8 }}>
+          <table className="ctable" style={{ margin:0, fontSize:12.5 }}>
+            <thead>
+              <tr>
+                {onOpenCase && <th style={{ width:28 }}></th>}
+                <th>DC/หน่วยงาน</th>
+                {billTypes.map(bt => (
+                  <React.Fragment key={bt}>
+                    <th style={{ textAlign:'right' }}>{bt}<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>เคส</span></th>
+                    <th style={{ textAlign:'right' }}>&nbsp;<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>มูลค่า</span></th>
+                  </React.Fragment>
+                ))}
+                <th style={{ textAlign:'right', background:'var(--surface-3)' }}>รวม<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>เคส</span></th>
+                <th style={{ textAlign:'right', background:'var(--surface-3)' }}>&nbsp;<br/><span style={{ fontSize:10, color:'var(--text-muted)', fontWeight:500 }}>มูลค่า</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pivot.map(r => {
+                const isOpen = !!expanded[r.dc];
+                const totalColSpan = 2 + billTypes.length * 2 + 2 + (onOpenCase ? 1 : 0);
+                return (
+                  <React.Fragment key={r.dc}>
+                    <tr onClick={() => onOpenCase && setExpanded(s => ({ ...s, [r.dc]: !s[r.dc] }))} style={{ cursor: onOpenCase ? 'pointer' : 'default' }}>
+                      {onOpenCase && <td style={{ textAlign:'center', fontSize:11, color:'var(--text-muted)' }}>{isOpen ? '▼' : '▶'}</td>}
+                      <td style={{ fontWeight:600 }}>{r.dc}</td>
+                      {billTypes.map(bt => (
+                        <React.Fragment key={bt}>
+                          <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"' }}>{r.cells[bt]?.count ? r.cells[bt].count.toLocaleString('th-TH') : <span style={{ color:'var(--text-muted)' }}>—</span>}</td>
+                          <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', color: r.cells[bt]?.amt > 0 ? '#34D399' : 'var(--text-muted)' }}>{money(r.cells[bt]?.amt || 0)}</td>
+                        </React.Fragment>
+                      ))}
+                      <td style={{ textAlign:'right', fontWeight:700, fontFeatureSettings:'"tnum"', background:hexA('#3B82F6',.06) }}>{r.totalCount.toLocaleString('th-TH')}</td>
+                      <td style={{ textAlign:'right', fontWeight:700, fontFeatureSettings:'"tnum"', color:'#34D399', background:hexA('#3B82F6',.06) }}>{money(r.totalAmt)}</td>
+                    </tr>
+                    {isOpen && onOpenCase && (
+                      <tr>
+                        <td colSpan={totalColSpan} style={{ padding:0, background:'var(--surface-3)' }}>
+                          <div style={{ padding:'8px 14px' }}>
+                            <table className="ctable" style={{ margin:0, background:'var(--surface-2)', borderRadius:6, overflow:'hidden' }}>
+                              <thead>
+                                <tr>
+                                  <th>เลขที่รับบิล</th>
+                                  <th>วันที่เอกสาร</th>
+                                  <th>ประเภทบิล</th>
+                                  <th>ผู้ส่ง → ผู้รับ</th>
+                                  <th style={{ textAlign:'right' }}>มูลค่ายืนยันเคลม</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {r.cases.slice(0, 50).map(c => (
+                                  <tr key={c.id} onClick={e => { e.stopPropagation(); onOpenCase(c); }} className="crow" style={{ cursor:'pointer' }}>
+                                    <td style={{ fontWeight:700, fontFeatureSettings:'"tnum"' }}>{c.receiptNo}</td>
+                                    <td style={{ fontFeatureSettings:'"tnum"', fontSize:12.5 }}>{c.docDate || '—'}</td>
+                                    <td>{c.billType || '—'}</td>
+                                    <td style={{ fontSize:12.5 }}>{c.sender} → {c.receiver}</td>
+                                    <td style={{ textAlign:'right', fontWeight:600, color:'#34D399', fontFeatureSettings:'"tnum"' }}>{c.claimAmount != null ? '฿'+Number(c.claimAmount).toLocaleString('th-TH') : '—'}</td>
+                                  </tr>
+                                ))}
+                                {r.cases.length > 50 && (
+                                  <tr><td colSpan={5} style={{ textAlign:'center', fontSize:12, color:'var(--text-muted)', padding:'8px' }}>— แสดง 50 จาก {r.cases.length} เคส —</td></tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ background:'var(--surface-3)', fontWeight:700 }}>
+                {onOpenCase && <td></td>}
+                <td>รวมทั้งหมด</td>
+                {billTypes.map(bt => (
+                  <React.Fragment key={bt}>
+                    <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"' }}>{(totals.byBt[bt]?.count || 0).toLocaleString('th-TH')}</td>
+                    <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', color:'#34D399' }}>{money(totals.byBt[bt]?.amt || 0)}</td>
+                  </React.Fragment>
+                ))}
+                <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', background:hexA('#3B82F6',.12) }}>{totals.count.toLocaleString('th-TH')}</td>
+                <td style={{ textAlign:'right', fontFeatureSettings:'"tnum"', color:'#34D399', background:hexA('#3B82F6',.12) }}>{money(totals.amt)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
