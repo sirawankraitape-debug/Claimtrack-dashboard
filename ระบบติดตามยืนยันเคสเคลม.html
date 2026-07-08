@@ -4557,32 +4557,45 @@ function CCRevertTool({ cases }) {
   const [busy, setBusy] = React.useState(false);
   const [result, setResult] = React.useState(null);
   const [selected, setSelected] = React.useState({});
+  const [mode, setMode] = React.useState('history');
+  const [sinceDate, setSinceDate] = React.useState('2026-07-07');
+
+  const parseCC = (t) => {
+    if (!t) return null;
+    const idx = t.indexOf(PREFIX);
+    if (idx < 0) return null;
+    return t.slice(idx + PREFIX.length).trim();
+  };
 
   const analyze = () => {
     setResult(null);
     setSelected({});
-    const parseCC = (t) => (t && t.startsWith(PREFIX)) ? t.slice(PREFIX.length).trim() : null;
     const list = [];
+    const since = mode === 'since' ? new Date(sinceDate + 'T00:00:00') : null;
     for (const c of cases) {
       if (c.ownerCC === TARGET) continue;
       const evs = (c.events || [])
         .filter(e => (e.text || '').includes(PREFIX))
-        .map(e => {
-          const idx = (e.text||'').indexOf(PREFIX);
-          return { at: new Date(e.at), to: parseCC(e.text.slice(idx)) };
-        })
+        .map(e => ({ at: new Date(e.at), to: parseCC(e.text) }))
         .sort((a, b) => a.at - b.at);
-      const hadTarget = evs.some(e => e.to === TARGET);
-      if (!hadTarget) continue;
+      if (!evs.length) continue;
       const latest = evs[evs.length - 1];
+
+      if (mode === 'history') {
+        if (!evs.some(e => e.to === TARGET)) continue;
+      } else if (mode === 'since') {
+        if (!since || latest.at < since) continue;
+      }
+
       list.push({
         id: c.id,
         receiptNo: c.receiptNo,
         currentOwnerCC: c.ownerCC || '—',
-        latestChangeAt: latest ? latest.at : null,
-        latestChangeTo: latest ? latest.to : '—',
+        latestChangeAt: latest.at,
+        latestChangeTo: latest.to || '—',
       });
     }
+    list.sort((a, b) => (b.latestChangeAt||0) - (a.latestChangeAt||0));
     const sel = {};
     list.forEach(c => { sel[c.id] = true; });
     setSelected(sel);
@@ -4631,11 +4644,23 @@ function CCRevertTool({ cases }) {
         </h3>
       </div>
       <div style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginTop:6 }}>
-        ค้นหาเคสที่<b> เคยเป็นของ {TARGET} </b>(จาก event log) แต่ปัจจุบัน CC ไม่ใช่ {TARGET} — เลือกเคสที่จะย้ายกลับ แล้วกดยืนยัน
+        <b>เกี่ยวกับ event log:</b> เฉพาะการเปลี่ยน CC ผ่านหน้าจอ (ปุ่ม "มอบหมาย CC") ถึงจะบันทึกใน log — เคสที่ import จาก Excel ครั้งแรกด้วย ownerCC = {TARGET} จะไม่มี event นั้น จึงต้องใช้โหมด "เปลี่ยน CC หลังวันที่..." ช่วยด้วย
+      </div>
+
+      <div style={{ display:'flex', gap:14, marginTop:14, flexWrap:'wrap', alignItems:'center', padding:'10px 12px', background:'var(--surface-3)', borderRadius:8 }}>
+        <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, fontWeight:600 }}>
+          <input type="radio" checked={mode==='history'} onChange={() => setMode('history')} />
+          เคยมี event "มอบหมาย CC: {TARGET}"
+        </label>
+        <label style={{ display:'flex', alignItems:'center', gap:6, cursor:'pointer', fontSize:13, fontWeight:600 }}>
+          <input type="radio" checked={mode==='since'} onChange={() => setMode('since')} />
+          เปลี่ยน CC ล่าสุดตั้งแต่วันที่
+          <input type="date" value={sinceDate} onChange={e => setSinceDate(e.target.value)} disabled={mode!=='since'} style={{ padding:'4px 8px', borderRadius:6, border:'1px solid var(--border)', background:'var(--surface-2)', color:'var(--text)', fontFamily:'inherit' }} />
+        </label>
       </div>
 
       <div style={{ display:'flex', gap:10, marginTop:14, flexWrap:'wrap' }}>
-        <Btn variant="ghost" icon="search" onClick={analyze} disabled={busy}>ค้นหาเคสที่เคยเป็นของ {TARGET}</Btn>
+        <Btn variant="ghost" icon="search" onClick={analyze} disabled={busy}>ค้นหาเคส</Btn>
         {candidates && candidates.length > 0 && (
           <Btn variant="primary" icon="check" onClick={apply} disabled={busy || selCount === 0}>
             {busy ? 'กำลังย้าย...' : `ย้ายกลับให้ ${TARGET} (${selCount} เคสที่เลือก)`}
