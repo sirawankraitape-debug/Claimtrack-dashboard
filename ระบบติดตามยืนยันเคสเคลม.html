@@ -2280,7 +2280,8 @@ function App() {
   const [currentUser, setCurrentUser] = useStateA(() => {
     try { const u = sessionStorage.getItem('ct_user'); return u ? JSON.parse(u) : null; } catch { return null; }
   });
-  window.canEditCases = !IS_SERVER || !currentUser || currentUser.role === 'admin';
+  // เฉพาะ clearclaim ที่ถูกจำกัดสิทธิ์ (view only) — user อื่นแก้ไขได้ตามปกติ
+  window.canEditCases = !IS_SERVER || !currentUser || currentUser.username !== 'clearclaim';
   const [cases, setCases]       = useStateA(() => IS_SERVER ? [] : lsLoad(LS_CASES,    window.CASES));
   const [statuses, setStatuses] = useStateA(() => IS_SERVER ? [...window.STATUSES] : lsLoad(LS_STATUSES, window.STATUSES));
   const [route, setRoute] = useStateA('dashboard');
