@@ -1592,6 +1592,7 @@ const dlD = window.dispLabel;
 
 function CaseDrawer({ caseData, onClose, onAction, onConfirm, onUnconfirm }) {
   const [tab, setTab] = useStateD('detail');
+  const canEdit = window.canEditCases !== false;
   if (!caseData) return null;
   const c = caseData;
   const s = window.STATUS_MAP[c.billStatus] || { color: '#94A3B8', label: 'ยังไม่ระบุสถานะ', key: null, terminal: false };
@@ -1677,7 +1678,7 @@ function CaseDrawer({ caseData, onClose, onAction, onConfirm, onUnconfirm }) {
           )}
         </div>
 
-        <div className="drawer-actions">
+        {canEdit && <div className="drawer-actions">
           {needsConfirm(c) && <Btn variant="primary" full icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับเคสเข้าระบบ</Btn>}
           {c.confirmed && c.billStatus !== 'no_driven' && onUnconfirm && <Btn variant="ghost" full icon="close" onClick={()=>onUnconfirm(c)}>ยกเลิกการยืนยันรับ</Btn>}
           <Btn variant="solid" full icon="refresh" onClick={()=>onAction('status', c)}>เปลี่ยนสถานะ / ระบุสถานะ</Btn>
@@ -1717,7 +1718,7 @@ function CaseDrawer({ caseData, onClose, onAction, onConfirm, onUnconfirm }) {
             <Btn variant="solid" size="sm" icon="note" onClick={()=>onAction('note', c)}>เพิ่มหมายเหตุ</Btn>
             <Btn variant="ghost" size="sm" icon="download" onClick={()=>onAction('export', c)}>ส่งออก</Btn>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );
@@ -2279,6 +2280,7 @@ function App() {
   const [currentUser, setCurrentUser] = useStateA(() => {
     try { const u = sessionStorage.getItem('ct_user'); return u ? JSON.parse(u) : null; } catch { return null; }
   });
+  window.canEditCases = !IS_SERVER || !currentUser || currentUser.role === 'admin';
   const [cases, setCases]       = useStateA(() => IS_SERVER ? [] : lsLoad(LS_CASES,    window.CASES));
   const [statuses, setStatuses] = useStateA(() => IS_SERVER ? [...window.STATUSES] : lsLoad(LS_STATUSES, window.STATUSES));
   const [route, setRoute] = useStateA('dashboard');
