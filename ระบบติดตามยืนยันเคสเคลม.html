@@ -1719,6 +1719,13 @@ function CaseDrawer({ caseData, onClose, onAction, onConfirm, onUnconfirm }) {
             <Btn variant="ghost" size="sm" icon="download" onClick={()=>onAction('export', c)}>ส่งออก</Btn>
           </div>
         </div>}
+
+        {/* view-only user (clearclaim): ให้แก้ไขได้เฉพาะมูลค่ายืนยันเคลม */}
+        {!canEdit && c.billStatus !== 'closed' && <div className="drawer-actions">
+          <Btn variant="primary" full icon="report" onClick={()=>onAction('claim_amount', c)}>
+            มูลค่ายืนยันเคลม{c.claimAmount != null ? ` (฿${Number(c.claimAmount).toLocaleString('th-TH')})` : ''}
+          </Btn>
+        </div>}
       </div>
     </div>
   );
