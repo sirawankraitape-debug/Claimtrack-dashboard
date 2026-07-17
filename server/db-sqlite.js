@@ -25,8 +25,9 @@ const DEFAULT_STATUSES = [
   { key:'not_accepted',  label:'ไม่รับเคส (เพิ่มข้อมูล)',             color:'#9333EA', grp:'ดำเนินการ',    terminal:0, sort_order:8  },
   { key:'consider_co',   label:'ขอพิจารณาลงบริษัท',                 color:'#EC4899', grp:'ดำเนินการ',    terminal:0, sort_order:9  },
   { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:0, sort_order:10 },
-  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:11 },
-  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:12 },
+  { key:'sokbo',         label:'เคส ศคบ.',                            color:'#0EA5E9', grp:'ดำเนินการ',    terminal:0, sort_order:11 },
+  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:12 },
+  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:13 },
 ];
 const REMOVED_STATUS_KEYS = ['A00','A01','A02','A03','A04','A89','B00','B01','B02','B03','B04','B05'];
 
