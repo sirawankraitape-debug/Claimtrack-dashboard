@@ -2689,6 +2689,7 @@ function App() {
     ['cc', 'userPlus', 'การจัดการเคส (CC)'],
     ['considerco', 'layers', 'เคสขอพิจารณาลงบริษัท'],
     ['cpfcases', 'box', 'เคส CPF'],
+    ['sokbocases', 'layers', 'เคส ศคบ.'],
     ['fraudcases', 'alert', 'เคสทุจริต'],
     ['delaycases', 'clock', 'เคสวิเคราะห์ล่าช้า'],
     ['nodrivencases', 'box', 'เคสไม่มีใน Drive N'],
@@ -2712,7 +2713,7 @@ function App() {
         </div>
         <nav className="nav">
           {(() => {
-            const NAV_STATUS_KEY = { considerco:'consider_co', cpfcases:'CPF', fraudcases:'fraud', delaycases:'delay_analyze', nodrivencases:'no_driven', notacceptedcases:'not_accepted' };
+            const NAV_STATUS_KEY = { considerco:'consider_co', cpfcases:'CPF', sokbocases:'sokbo', fraudcases:'fraud', delaycases:'delay_analyze', nodrivencases:'no_driven', notacceptedcases:'not_accepted' };
             return nav.map(([k, ic, lb]) => {
               const statusCount = NAV_STATUS_KEY[k] ? (sum.byStatus[NAV_STATUS_KEY[k]] || 0) : 0;
               return (
@@ -2804,6 +2805,7 @@ function App() {
           {route === 'delaycases' && <ErrorBoundary key="delaycases"><DelayCasesView cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
           {route === 'nodrivencases' && <ErrorBoundary key="nodrivencases"><DelayCasesView statusKey="no_driven" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
           {route === 'notacceptedcases' && <ErrorBoundary key="notacceptedcases"><DelayCasesView statusKey="not_accepted" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
+          {route === 'sokbocases' && <ErrorBoundary key="sokbocases"><DelayCasesView statusKey="sokbo" cases={displayCases} onOpenCase={setOpenCase} onConfirm={confirmCase} onSetStatus={setStatus} onAddStatus={openAddStatus} onExport={exportCases} /></ErrorBoundary>}
           {route === 'dcsummary' && <ErrorBoundary key="dcsummary"><DCSummaryView cases={displayCases} onOpenCase={setOpenCase} /></ErrorBoundary>}
           {route === 'report' && <DurationReport cases={displayCases} onExport={() => exportCases(null)} />}
           {route === 'settings' && <StatusSettings cases={cases} statuses={statuses} onAddStatus={openAddStatus} onDeleteStatus={deleteStatus} onBackup={backupDB} onRestore={restoreDB} onReset={resetDB} onDeleteByDate={deleteByDocDate} dbStats={dbStats} />}
