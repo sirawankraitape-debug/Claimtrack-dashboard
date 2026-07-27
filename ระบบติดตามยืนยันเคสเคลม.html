@@ -3024,7 +3024,7 @@ function SCPersonCards({ scCases, onOpenCase }) {
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>· {expandedCases.length} เคส · เรียงจากค้างนานสุด</span>
             <button onClick={e => { e.stopPropagation(); setExpandKey(null); }} style={{ marginLeft:'auto', background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 4px' }}>✕</button>
           </div>
-          <div style={{ overflowX:'auto' }}>
+          <div style={{ overflowX:'auto', overflowY:'auto', maxHeight:'55vh' }}>
             <table className="ctable" style={{ fontSize:12 }}>
               <thead>
                 <tr>
@@ -3457,7 +3457,7 @@ function CCPersonCards({ ccCases, onOpenCase }) {
             <span style={{ fontSize:12, color:'var(--text-muted)' }}>· {expandedCases.length} เคส · เรียงจากค้างนานสุด</span>
             <button onClick={e => { e.stopPropagation(); setExpandKey(null); }} style={{ marginLeft:'auto', background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18, lineHeight:1, padding:'0 4px' }}>✕</button>
           </div>
-          <div style={{ overflowX:'auto' }}>
+          <div style={{ overflowX:'auto', overflowY:'auto', maxHeight:'55vh' }}>
             <table className="ctable" style={{ fontSize:12 }}>
               <thead>
                 <tr>
