@@ -899,11 +899,7 @@ function StatusPicker({ current, onPick, onAdd }) {
           </div>
         </div>
       ))}
-      {onAdd && (
-        <button onClick={onAdd} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:7, padding:'10px', border:'1.5px dashed var(--border-2)', borderRadius:'var(--radius-sm)', background:'transparent', color:'var(--accent-2)', fontSize:13, fontWeight:600, fontFamily:'inherit', cursor:'pointer' }}>
-          <Icon name="plus" size={16} />เพิ่ม / ระบุสถานะเอง
-        </button>
-      )}
+      {/* ปิดการ "ระบุสถานะเอง" — ใช้ได้เฉพาะสถานะที่กำหนดไว้ในระบบ */}
     </div>
   );
 }
@@ -5211,7 +5207,6 @@ function StatusSettings({ cases, statuses, onAddStatus, onDeleteStatus, onBackup
       {/* ===== จัดการสถานะ ===== */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
         <h2 style={{ fontFamily:'var(--font-display)', fontSize:19, fontWeight:700 }}>จัดการสถานะ ({statuses.length} สถานะ)</h2>
-        <Btn variant="primary" icon="plus" onClick={onAddStatus}>เพิ่ม / ระบุสถานะ</Btn>
       </div>
 
       {groups.map(g => (

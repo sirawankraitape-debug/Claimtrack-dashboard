@@ -94,11 +94,8 @@ app.get('/api/statuses', async (req, res) => {
 });
 
 app.post('/api/statuses', async (req, res) => {
-  try {
-    const s = await DB.addStatus(req.body);
-    broadcast('statuses_updated', { source: 'add', key: s.key });
-    res.json(s);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  // ปิดการ "ระบุสถานะเอง" — ไม่อนุญาตให้สร้างสถานะกำหนดเองผ่าน API
+  res.status(403).json({ error: 'ปิดการเพิ่มสถานะเอง — ใช้ได้เฉพาะสถานะที่กำหนดไว้ในระบบ' });
 });
 
 app.delete('/api/statuses/:key', async (req, res) => {
