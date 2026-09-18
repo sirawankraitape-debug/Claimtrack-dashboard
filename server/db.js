@@ -123,6 +123,14 @@ const init = async () => {
   );
   await pool.query(`DELETE FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ'`);
 
+  // เปลี่ยนสถานะกำหนดเอง "ยกเลิกเคลม" → 'closed' (ปิดจบไม่เคลม) แล้วลบสถานะเดิม
+  // (ทำครั้งเดียวก็พอ แต่ปลอดภัยถ้ารันซ้ำ — no-op เมื่อไม่มีสถานะนี้)
+  await pool.query(
+    `UPDATE cases SET bill_status = 'closed'
+     WHERE bill_status IN (SELECT key FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'ยกเลิกเคลม')`
+  );
+  await pool.query(`DELETE FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'ยกเลิกเคลม'`);
+
   // Seed default users ถ้ายังไม่มี user
   const { rows: userRows } = await pool.query('SELECT COUNT(*) AS n FROM users');
   if (parseInt(userRows[0].n) === 0) {

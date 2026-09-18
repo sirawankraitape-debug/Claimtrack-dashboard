@@ -132,6 +132,14 @@ const init = async () => {
      WHERE bill_status IN (SELECT key FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ')`
   ).run();
   db.prepare(`DELETE FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ'`).run();
+
+  // เปลี่ยนสถานะกำหนดเอง "ยกเลิกเคลม" → 'closed' (ปิดจบไม่เคลม) แล้วลบสถานะเดิม
+  // (ทำครั้งเดียวก็พอ แต่ปลอดภัยถ้ารันซ้ำ — no-op เมื่อไม่มีสถานะนี้)
+  db.prepare(
+    `UPDATE cases SET bill_status = 'closed'
+     WHERE bill_status IN (SELECT key FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'ยกเลิกเคลม')`
+  ).run();
+  db.prepare(`DELETE FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'ยกเลิกเคลม'`).run();
 };
 
 // ───── Cases ────────────────────────────────────────────────────
