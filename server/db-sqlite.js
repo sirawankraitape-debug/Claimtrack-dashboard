@@ -124,6 +124,14 @@ const init = async () => {
   const placeholders = REMOVED_STATUS_KEYS.map(() => '?').join(',');
   db.prepare(`UPDATE cases SET bill_status = NULL WHERE bill_status IN (${placeholders})`).run(...REMOVED_STATUS_KEYS);
   db.prepare(`DELETE FROM statuses WHERE key IN (${placeholders})`).run(...REMOVED_STATUS_KEYS);
+
+  // รวมสถานะซ้ำ "รถเกิดอุบัติเหตุ": ย้ายเคสจากสถานะกลุ่ม "กำหนดเอง" ที่ชื่อซ้ำ → 'accident' แล้วลบตัวซ้ำ
+  // (ทำครั้งเดียวก็พอ แต่ปลอดภัยถ้ารันซ้ำ — no-op เมื่อไม่มีสถานะซ้ำ)
+  db.prepare(
+    `UPDATE cases SET bill_status = 'accident'
+     WHERE bill_status IN (SELECT key FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ')`
+  ).run();
+  db.prepare(`DELETE FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ'`).run();
 };
 
 // ───── Cases ────────────────────────────────────────────────────

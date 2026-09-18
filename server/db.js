@@ -115,6 +115,14 @@ const init = async () => {
     [REMOVED_STATUS_KEYS]
   );
 
+  // รวมสถานะซ้ำ "รถเกิดอุบัติเหตุ": ย้ายเคสจากสถานะกลุ่ม "กำหนดเอง" ที่ชื่อซ้ำ → 'accident' แล้วลบตัวซ้ำ
+  // (ทำครั้งเดียวก็พอ แต่ปลอดภัยถ้ารันซ้ำ — no-op เมื่อไม่มีสถานะซ้ำ)
+  await pool.query(
+    `UPDATE cases SET bill_status = 'accident'
+     WHERE bill_status IN (SELECT key FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ')`
+  );
+  await pool.query(`DELETE FROM statuses WHERE grp = 'กำหนดเอง' AND label = 'รถเกิดอุบัติเหตุ'`);
+
   // Seed default users ถ้ายังไม่มี user
   const { rows: userRows } = await pool.query('SELECT COUNT(*) AS n FROM users');
   if (parseInt(userRows[0].n) === 0) {
