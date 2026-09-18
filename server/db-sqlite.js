@@ -26,8 +26,10 @@ const DEFAULT_STATUSES = [
   { key:'consider_co',   label:'ขอพิจารณาลงบริษัท',                 color:'#EC4899', grp:'ดำเนินการ',    terminal:0, sort_order:9  },
   { key:'CPF',           label:'CPF',                                color:'#F43F5E', grp:'ดำเนินการ',    terminal:0, sort_order:10 },
   { key:'sokbo',         label:'เคส ศคบ.',                            color:'#0EA5E9', grp:'ดำเนินการ',    terminal:0, sort_order:11 },
-  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:12 },
-  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:13 },
+  { key:'accident',      label:'รถเกิดอุบัติเหตุ',                     color:'#CA8A04', grp:'ดำเนินการ',    terminal:0, sort_order:12 },
+  { key:'kex_claim',     label:'เคลม KEX',                            color:'#4F46E5', grp:'ดำเนินการ',    terminal:0, sort_order:13 },
+  { key:'fraud',         label:'เคสทุจริต',                          color:'#DC2626', grp:'ดำเนินการ',    terminal:1, sort_order:14 },
+  { key:'closed',        label:'ปิดจบไม่เคลม',                      color:'#10B981', grp:'ดำเนินการ',    terminal:1, sort_order:15 },
 ];
 const REMOVED_STATUS_KEYS = ['A00','A01','A02','A03','A04','A89','B00','B01','B02','B03','B04','B05'];
 
@@ -173,6 +175,8 @@ const EXCEL_STATUS_MAP = {
   'ปิดจบไม่เคลม':                   'closed',
   'CPF':                            'CPF',
   'เคสทุจริต':                       'fraud',
+  'รถเกิดอุบัติเหตุ':                  'accident',
+  'เคลม KEX':                        'kex_claim',
 };
 
 const importCases = async (rows) => {

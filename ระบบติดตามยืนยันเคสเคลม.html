@@ -267,6 +267,8 @@ const DEFAULT_STATUSES = [
   { key: 'consider_co', label: 'ขอพิจารณาลงบริษัท',                color: '#EC4899', group: 'ดำเนินการ' },
   { key: 'CPF',         label: 'เคส CPF',                            color: '#EAB308', group: 'ดำเนินการ' },
   { key: 'sokbo',        label: 'เคส ศคบ.',                           color: '#0EA5E9', group: 'ดำเนินการ' },
+  { key: 'accident',     label: 'รถเกิดอุบัติเหตุ',                    color: '#CA8A04', group: 'ดำเนินการ' },
+  { key: 'kex_claim',    label: 'เคลม KEX',                           color: '#4F46E5', group: 'ดำเนินการ' },
   { key: 'fraud',        label: 'เคสทุจริต',                         color: '#4B5563', group: 'ดำเนินการ', terminal: true },
   { key: 'closed',       label: 'ปิดจบไม่เคลม',                     color: '#10B981', group: 'ดำเนินการ', terminal: true },
 ];
@@ -351,6 +353,8 @@ const EXCEL_STATUS_MAP = {
   'ปิดจบไม่เคลม':                   'closed',
   'CPF':                            'CPF',
   'เคสทุจริต':                       'fraud',
+  'รถเกิดอุบัติเหตุ':                  'accident',
+  'เคลม KEX':                        'kex_claim',
 };
 
 // แปลงวันที่จาก SheetJS ให้เป็น DD/MM/YYYY (พ.ศ.) เสมอ
