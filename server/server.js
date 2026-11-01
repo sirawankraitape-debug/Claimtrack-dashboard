@@ -100,6 +100,7 @@ app.get('/api/nc-lookup', async (req, res) => {
     if (!r.ok) throw new Error(`NC Manager ตอบ ${r.status}`);
     const map = {};
     for (const row of (await r.json()).rows || []) {
+      if (!/\d/.test(row.bill)) continue;   // ข้ามบิลที่เป็น "-" หรือค่าว่างใน NC
       if (!map[row.bill]) map[row.bill] = { no: row.no, step: row.step, offense: row.offense, count: 0 };   // แถวแรก = NC ล่าสุด
       map[row.bill].count++;
     }
