@@ -3764,7 +3764,7 @@ function ConsiderCoView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
     let cur = 'received';
     evs.forEach(e => {
       if (e.type === 'status') {
-        const m = e.text && e.text.match(/"([^"]+)"/);
+        const m = e.text && e.text.match(/["“”]([^"“”]+)["“”]/);
         if (m) {
           const found = window.STATUSES.find(s => s.label === m[1]);
           if (found) {
@@ -3972,7 +3972,7 @@ function CpfCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus, 
     let entryDate = null;
     evs.forEach(e => {
       if (e.type === 'status') {
-        const m = e.text && e.text.match(/"([^"]+)"/);
+        const m = e.text && e.text.match(/["“”]([^"“”]+)["“”]/);
         if (m) {
           const found = window.STATUSES.find(s => s.label === m[1]);
           if (found && found.key === 'CPF') entryDate = new Date(e.at);
@@ -4149,7 +4149,7 @@ function FraudCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
     let entryDate = null;
     evs.forEach(e => {
       if (e.type === 'status') {
-        const m = e.text && e.text.match(/"([^"]+)"/);
+        const m = e.text && e.text.match(/["“”]([^"“”]+)["“”]/);
         if (m) {
           const found = window.STATUSES.find(s => s.label === m[1]);
           if (found && found.key === 'fraud') entryDate = new Date(e.at);
@@ -4350,7 +4350,7 @@ function DelayCasesView({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus
     let entryDate = null;
     evs.forEach(e => {
       if (e.type === 'status') {
-        const m = e.text && e.text.match(/"([^"]+)"/);
+        const m = e.text && e.text.match(/["“”]([^"“”]+)["“”]/);
         if (m) {
           const found = window.STATUSES.find(s => s.label === m[1]);
           if (found && found.key === statusKey) entryDate = new Date(e.at);
@@ -5299,7 +5299,7 @@ function buildStatusData(c) {
 
   evs.forEach(e => {
     if (e.type !== 'status') return;
-    const m = e.text && e.text.match(/"([^"]+)"/);
+    const m = e.text && e.text.match(/["“”]([^"“”]+)["“”]/);
     if (!m) return;
     const found = window.STATUSES.find(s => s.label === m[1]);
     if (!found) return;
