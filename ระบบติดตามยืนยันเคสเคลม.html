@@ -1400,7 +1400,22 @@ function StatusActionMenu({ c, onSetStatus, onConfirm, onAddStatus }) {
   );
 }
 
+// ขั้นตอน/ลักษณะความผิดจาก NC Manager จับคู่ด้วยเลขที่บิล (โหลดครั้งเดียวต่อหน้า — เซิร์ฟเวอร์แคชไว้ 5 นาที)
+let ncLookupPromise = null;
+function useNcLookup() {
+  const [nc, setNc] = useStateC({ configured: false, map: {} });
+  useEffectC(() => {
+    let alive = true;
+    ncLookupPromise = ncLookupPromise || fetch('/api/nc-lookup').then(r => r.json()).catch(() => ({ configured: false, map: {} }));
+    ncLookupPromise.then(d => { if (alive) setNc(d); });
+    setTimeout(() => { ncLookupPromise = null; }, 60000);
+    return () => { alive = false; };
+  }, []);
+  return nc;
+}
+
 function CaseTable({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
+  const nc = useNcLookup();
   return (
     <div className="table-wrap" style={{ height:'100%' }}>
       <table className="ctable">
@@ -1418,11 +1433,13 @@ function CaseTable({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
             <th>สถานะ</th>
             <th style={{textAlign:'right'}}>มูลค่ายืนยันเคลม</th>
             <th>DC/หน่วยงาน ที่เสียหาย</th>
+            {nc.configured && <th>ขั้นตอน (NC)</th>}
+            {nc.configured && <th>ลักษณะความผิด (NC)</th>}
             <th style={{textAlign:'right'}}>จัดการ</th>
           </tr>
         </thead>
         <tbody>
-          {cases.map(c => (
+          {cases.map(c => { const n = nc.map[c.billNo]; return (
             <tr key={c.id} onClick={()=>onOpenCase(c)} className="crow">
               <td>
                 <div style={{ fontWeight:700, fontSize:13.5, fontFeatureSettings:'"tnum"' }}>{c.receiptNo}</div>
@@ -1473,6 +1490,15 @@ function CaseTable({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
                   ? <span style={{ fontSize:12.5, fontWeight:500, color:'var(--text-2)', display:'inline-flex', alignItems:'center', gap:5 }}><Icon name="truck" size={13} style={{ color:'var(--accent-2)', flexShrink:0 }} />{c.faultDC}</span>
                   : <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>—</span>}
               </td>
+              {nc.configured && <td>
+                {n ? <><span style={{ fontSize:12.5, color:'var(--text-2)' }}>{n.step || '—'}</span>
+                    {n.count > 1 && <div style={{ fontSize:11, color:'var(--text-muted)' }}>+{n.count - 1} NC อื่น</div>}</>
+                  : <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>—</span>}
+              </td>}
+              {nc.configured && <td>
+                {n ? <span title={n.no} style={{ fontSize:12.5, color:'var(--text-2)', display:'inline-block', maxWidth:220 }}>{n.offense || '—'}</span>
+                  : <span style={{ fontSize:12.5, color:'var(--text-muted)' }}>—</span>}
+              </td>}
               <td style={{ textAlign:'right' }} onClick={e=>e.stopPropagation()}>
                 <div style={{ display:'inline-flex', gap:7, justifyContent:'flex-end' }}>
                   {needsConfirm(c) && <Btn variant="primary" size="sm" icon="check" onClick={()=>onConfirm(c)}>ยืนยันรับ</Btn>}
@@ -1480,7 +1506,7 @@ function CaseTable({ cases, onOpenCase, onConfirm, onSetStatus, onAddStatus }) {
                 </div>
               </td>
             </tr>
-          ))}
+          ); })}
         </tbody>
       </table>
       {cases.length===0 && <Empty />}

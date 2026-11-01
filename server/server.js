@@ -87,6 +87,29 @@ app.post('/api/cases/:id/events', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── NC Manager (อ่านขั้นตอน/ลักษณะความผิด จับคู่ด้วยเลขที่บิล) ─────
+// ตั้ง env: NC_MANAGER_URL (ไม่ตั้ง = ค่าเริ่มต้นด้านล่าง) และ NC_API_KEY (ต้องตรงกับ NC Manager)
+const NC_URL = (process.env.NC_MANAGER_URL || 'https://nc-manager-production.up.railway.app').replace(/\/+$/, '');
+let ncCache = { at: 0, map: {} };
+app.get('/api/nc-lookup', async (req, res) => {
+  const key = process.env.NC_API_KEY;
+  if (!key) return res.json({ configured: false, map: {} });
+  if (Date.now() - ncCache.at < 5 * 60 * 1000) return res.json({ configured: true, map: ncCache.map });
+  try {
+    const r = await fetch(`${NC_URL}/api/integration/nc-summary`, { headers: { 'x-api-key': key }, signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`NC Manager ตอบ ${r.status}`);
+    const map = {};
+    for (const row of (await r.json()).rows || []) {
+      if (!map[row.bill]) map[row.bill] = { no: row.no, step: row.step, offense: row.offense, count: 0 };   // แถวแรก = NC ล่าสุด
+      map[row.bill].count++;
+    }
+    ncCache = { at: Date.now(), map };
+    res.json({ configured: true, map });
+  } catch (e) {
+    res.json({ configured: true, map: ncCache.map, error: e.message });   // ล้มเหลว = ใช้ข้อมูลเดิมที่แคชไว้ ไม่ให้หน้าเคสพัง
+  }
+});
+
 // ─── Statuses API ─────────────────────────────────────────────
 app.get('/api/statuses', async (req, res) => {
   try { res.json(await DB.getAllStatuses()); }
